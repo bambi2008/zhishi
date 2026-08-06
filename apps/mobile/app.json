@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "知时",
+    "slug": "zhishi",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "zhishi",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bambi2008.zhishi"
+    },
+    "android": {
+      "package": "com.bambi2008.zhishi"
+    }
+  }
+}
