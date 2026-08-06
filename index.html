@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f5ef" />
+    <meta name="description" content="知时：把不确定，慢慢变成下一步。" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <title>知时 · 东方人生导航</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-frame" id="app">
+      <aside class="sidebar">
+        <div class="brand-lockup">
+          <div class="brand-mark" aria-hidden="true">知</div>
+          <div>
+            <div class="brand-name">知时</div>
+            <div class="brand-subtitle">东方人生导航</div>
+          </div>
+        </div>
+
+        <div class="sidebar-label">我的空间</div>
+        <nav class="main-nav" aria-label="主导航">
+          <button class="nav-item active" data-view="daily" type="button">
+            <span class="nav-icon">◌</span><span>Daily</span><small>今日</small>
+          </button>
+          <button class="nav-item" data-view="journey" type="button">
+            <span class="nav-icon">↗</span><span>Journey</span><small>章节</small>
+          </button>
+          <button class="nav-item" data-view="year" type="button">
+            <span class="nav-icon">⌁</span><span>Year</span><small>一年</small>
+          </button>
+        </nav>
+
+        <div class="sidebar-divider"></div>
+        <div class="sidebar-label">快捷入口</div>
+        <button class="quick-entry" id="open-clarity" type="button">
+          <span class="quick-entry-icon">✦</span>
+          <span>
+            <strong>我现在有点乱</strong>
+            <small>60 秒，找回一个支点</small>
+          </span>
+          <span class="arrow">↗</span>
+        </button>
+
+        <div class="sidebar-spacer"></div>
+        <div class="sidebar-footnote">
+          <span class="breath-dot"></span>
+          <span>今天也只需要往前一步</span>
+        </div>
+        <button class="profile-button" id="open-onboarding" type="button">
+          <span class="avatar">林</span>
+          <span class="profile-meta"><strong>林遥</strong><small>我的底图</small></span>
+          <span class="profile-more">···</span>
+        </button>
+      </aside>
+
+      <main class="main-content">
+        <header class="topbar">
+          <div class="mobile-brand"><span class="brand-mark small">知</span><span>知时</span></div>
+          <div class="topbar-context"><span class="context-dot"></span>乙巳年 · 立秋前后</div>
+          <div class="topbar-actions">
+            <button class="icon-button" id="open-safety" aria-label="安全说明" type="button">♡</button>
+            <button class="user-chip" id="open-onboarding" type="button"><span class="avatar small">林</span><span>林遥</span><span class="chevron">⌄</span></button>
+          </div>
+        </header>
+
+        <section class="view active" id="view-daily" aria-labelledby="daily-title">
+          <div class="page-heading">
+            <div>
+              <div class="eyebrow">2026 年 8 月 6 日 · 星期四</div>
+              <h1 id="daily-title">早上好，林遥。</h1>
+              <p>今天，先把一个不确定的地方照亮。</p>
+            </div>
+            <div class="heading-aside">
+              <span class="soft-badge"><span class="status-dot"></span>第 6 天</span>
+              <span class="muted">连续使用</span>
+            </div>
+          </div>
+
+          <div class="daily-grid">
+            <article class="card focus-card">
+              <div class="card-topline">
+                <span class="section-kicker"><span class="kicker-dot"></span>今日定向</span>
+                <span class="card-time">2—3 分钟</span>
+              </div>
+              <div class="focus-content">
+                <div>
+                  <h2>不必急着证明，先收集一个事实。</h2>
+                  <p class="lead-copy">你今天可能对模糊的回应更敏感，容易在信息还没齐的时候提前推演结果。把判断往后放一点，反而能让真正重要的信号浮出来。</p>
+                </div>
+                <div class="focus-note">
+                  <div class="note-label">今天的安定句</div>
+                  <p>不需要一次想清全部，只要确认下一件真实发生的事。</p>
+                </div>
+              </div>
+              <div class="evidence-inline" data-evidence="daily-theme">
+                <button class="evidence-toggle" type="button"><span>⌘</span> 为什么这么判断？ <i>⌄</i></button>
+                <div class="evidence-body"></div>
+              </div>
+            </article>
+
+            <article class="card state-card">
+              <div class="card-topline">
+                <span class="section-kicker"><span class="kicker-dot gold"></span>现在的状态</span>
+                <button class="text-button" id="open-checkin" type="button">更新 <span>↗</span></button>
+              </div>
+              <div class="state-orbit">
+                <div class="orbit-ring ring-one"></div><div class="orbit-ring ring-two"></div>
+                <div class="orbit-center"><strong id="clarity-score">3.4</strong><span>清晰度</span></div>
+              </div>
+              <div class="state-metrics">
+                <div><span class="metric-bar"><i style="width: 62%"></i></span><b>压力</b><em>中</em></div>
+                <div><span class="metric-bar green"><i style="width: 74%"></i></span><b>精力</b><em>中上</em></div>
+                <div><span class="metric-bar lilac"><i style="width: 49%"></i></span><b>掌控感</b><em>中</em></div>
+              </div>
+              <div class="state-footer"><span>最近 7 天</span><span class="trend-up">清晰度 ↑ 0.6</span></div>
+            </article>
+          </div>
+
+          <div class="section-header action-header">
+            <div><span class="section-kicker"><span class="kicker-dot terracotta"></span>今天的一步</span><h2>一个可完成的行动</h2></div>
+            <span class="action-estimate">预计 15 分钟</span>
+          </div>
+          <article class="card action-card">
+            <div class="action-number">01</div>
+            <div class="action-copy"><span class="action-type">收集信息</span><h3>把等待中的消息，分成「已发生」和「我在猜」。</h3><p>打开备忘录，写下你现在最挂念的三件事，并给每一件标记：已发生 / 有证据 / 纯猜测。</p></div>
+            <button class="primary-button" id="complete-action" type="button"><span class="button-label">完成这一步</span><span class="button-icon">→</span></button>
+          </article>
+          <div class="action-evidence evidence-inline" data-evidence="daily-action"><button class="evidence-toggle" type="button"><span>⌘</span> 为什么是这个行动？ <i>⌄</i></button><div class="evidence-body"></div></div>
+
+          <div class="lower-grid">
+            <article class="card clarity-card">
+              <div class="card-topline"><span class="section-kicker"><span class="kicker-dot blue"></span>随时可用</span><span class="card-time">60—120 秒</span></div>
+              <div class="clarity-card-content"><div><h2>我现在有点乱</h2><p>把事实、解释和担心分开，下一小时只做一件事。</p></div><button class="round-arrow" id="open-clarity-2" type="button">↗</button></div>
+            </article>
+            <article class="card chapter-card">
+              <div class="card-topline"><span class="section-kicker"><span class="kicker-dot purple"></span>当前人生章节</span><button class="text-button" data-view-target="journey" type="button">查看 <span>↗</span></button></div>
+              <div class="chapter-card-content"><div class="chapter-index">02</div><div><span class="chapter-status">探索中 · 已持续 18 天</span><h3>在可修复的地方，重建工作节奏</h3><p>下一个节点：确认三个外部岗位的真实要求</p></div></div>
+            </article>
+          </div>
+
+          <section class="mirror-strip">
+            <div class="mirror-copy"><span class="section-kicker"><span class="kicker-dot pink"></span>七日镜像</span><h2>你已经比三天前更清楚了。</h2><p>这周你 4 次选择了“先收集事实”，其中 3 次减少了反复搜索。</p></div>
+            <div class="mini-chart" aria-label="最近七日清晰度趋势"><span style="height: 34%"></span><span style="height: 44%"></span><span style="height: 38%"></span><span style="height: 59%"></span><span style="height: 54%"></span><span style="height: 72%"></span><span class="current" style="height: 80%"></span></div>
+            <button class="ghost-button" data-view-target="daily" data-scroll="mirror" type="button">打开镜像 <span>→</span></button>
+          </section>
+        </section>
+
+        <section class="view" id="view-journey" aria-labelledby="journey-title">
+          <div class="page-heading compact-heading"><div><div class="eyebrow">JOURNEY · 一个人生章节</div><h1 id="journey-title">把一件事，走得更清楚。</h1><p>不替你决定，只陪你把事实和选择放在一起。</p></div><button class="outline-button" id="add-chapter" type="button">＋ 新建章节</button></div>
+          <div class="journey-hero card"><div><span class="chapter-status">进行中 · 第 18 天</span><h2>在可修复的地方，重建工作节奏</h2><p>你正在探索：要不要换工作，以及什么条件会让这个选择变得更真实。</p></div><div class="journey-progress"><div class="progress-circle"><strong>42%</strong><span>章节进度</span></div></div></div>
+          <div class="journey-columns"><div><div class="section-header inline-section"><div><span class="section-kicker"><span class="kicker-dot gold"></span>当前状态</span><h2>不是没有答案，是信息还在路上。</h2></div></div><div class="timeline card"><div class="timeline-item done"><span class="timeline-pin"></span><div><span>已完成 · 8 月 2 日</span><h3>整理现金储备与可承受周期</h3><p>已确认至少可以维持 5 个月的基础支出。</p></div></div><div class="timeline-item active"><span class="timeline-pin"></span><div><span>正在进行 · 今天</span><h3>确认三个外部岗位的真实要求</h3><p>不要先判断自己行不行，先把岗位事实收集完整。</p><button class="small-action" id="chapter-action" type="button">记录进展 <span>→</span></button></div></div><div class="timeline-item upcoming"><span class="timeline-pin"></span><div><span>待验证 · 本周</span><h3>和一位可信任的人讨论选择条件</h3></div></div></div></div><aside class="chapter-side card"><span class="section-kicker"><span class="kicker-dot purple"></span>关键待验证</span><ol><li><span>01</span>外部岗位数量是否足够</li><li><span>02</span>当前工作是否仍可修复</li><li><span>03</span>身体和精力是否允许转换</li></ol><div class="evidence-inline" data-evidence="journey"><button class="evidence-toggle" type="button"><span>⌘</span> 为什么这样拆？ <i>⌄</i></button><div class="evidence-body"></div></div></aside></div>
+          <div class="journey-bottom"><div><span class="section-kicker"><span class="kicker-dot blue"></span>章节提醒</span><p>先别把“想离开”直接翻译成“必须辞职”。你现在要验证的是：有没有更适合的结构。</p></div><button class="primary-button" id="open-chapter-log" type="button">写一条今天的记录 <span>→</span></button></div>
+        </section>
+
+        <section class="view" id="view-year" aria-labelledby="year-title">
+          <div class="page-heading compact-heading"><div><div class="eyebrow">YEAR · 一年导航</div><h1 id="year-title">重建结构，再选择扩张。</h1><p>这是一个预测 + 验证的年度视角，会随现实事件更新。</p></div><div class="year-actions"><span class="version-chip">版本 01 · 2026.08.06</span><button class="outline-button" id="add-year-event" type="button">＋ 更新现实事件</button></div></div>
+          <div class="year-summary card"><div class="year-summary-main"><span class="section-kicker"><span class="kicker-dot terracotta"></span>年度总览 · 2026</span><h2>不必迅速证明自己，先把可持续的结构搭起来。</h2><p>上半年更适合整理资源与验证方向，下半年把成熟选择转为行动。重要的不是预测一个结果，而是让每次更新都更接近你正在经历的现实。</p><div class="year-tags"><span>整理</span><span>验证</span><span>渐进扩张</span></div></div><div class="season-wheel"><div class="wheel-core">2026<span>年度导航</span></div><div class="wheel-quarter q1"><b>Q1</b><small>整理</small></div><div class="wheel-quarter q2"><b>Q2</b><small>试探</small></div><div class="wheel-quarter q3 active"><b>Q3</b><small>转折</small></div><div class="wheel-quarter q4"><b>Q4</b><small>收尾</small></div></div></div>
+          <div class="year-section-head"><div><span class="section-kicker"><span class="kicker-dot gold"></span>四季度节奏</span><h2>现在先看 Q3 的转折感</h2></div><button class="text-button" id="compare-year" type="button">查看版本变化 <span>↗</span></button></div>
+          <div class="quarter-grid"><article class="quarter-card"><span>Q1 · 已完成</span><h3>整理</h3><p>把分散的责任和资源重新归位。</p><div class="quarter-line done-line"></div><small>现实验证：已记录 2 项</small></article><article class="quarter-card"><span>Q2 · 已完成</span><h3>试探</h3><p>小范围验证方向，而不是立刻转身。</p><div class="quarter-line done-line"></div><small>现实验证：已记录 4 项</small></article><article class="quarter-card active-quarter"><span>Q3 · 进行中</span><h3>转折</h3><p>将已确认的选择，变成可逆的行动。</p><div class="quarter-line active-line"></div><small>当前窗口 · 8—10 月</small><div class="evidence-inline" data-evidence="year-quarter"><button class="evidence-toggle" type="button"><span>⌘</span> 为什么这么判断？ <i>⌄</i></button><div class="evidence-body"></div></div></article><article class="quarter-card"><span>Q4 · 待进入</span><h3>收尾</h3><p>复盘真正有效的变化，减少无效消耗。</p><div class="quarter-line"></div><small>将在 Q3 结束后更新</small></article></div>
+          <div class="year-domain-grid"><article class="domain-card"><span class="domain-icon career">↗</span><span>事业</span><strong>先验证，再换轨</strong><small>职责变化 · 能力建设</small></article><article class="domain-card"><span class="domain-icon finance">⌁</span><span>财务</span><strong>守住现金流边界</strong><small>支出压力 · 风险承受</small></article><article class="domain-card"><span class="domain-icon relation">♡</span><span>关系</span><strong>让边界说得更早</strong><small>沟通节奏 · 现实信号</small></article><article class="domain-card"><span class="domain-icon health">○</span><span>健康</span><strong>恢复是基础设施</strong><small>生活节奏 · 压力管理</small></article><article class="domain-card"><span class="domain-icon self">✦</span><span>自我</span><strong>从证明转向选择</strong><small>价值排序 · 长期方向</small></article></div>
+          <div class="months-preview card"><div class="month-head"><div><span class="section-kicker"><span class="kicker-dot pink"></span>月度导航</span><h2>接下来三个月</h2></div><span class="muted">只看高价值信号</span></div><div class="months-row"><div><span>08</span><b>收集</b><small>把事实收齐</small></div><div class="current-month"><span>09</span><b>试行</b><small>做一次可逆尝试</small></div><div><span>10</span><b>确认</b><small>看行动后的反馈</small></div></div></div>
+        </section>
+      </main>
+
+      <nav class="mobile-nav" aria-label="移动端主导航"><button class="mobile-nav-item active" data-view="daily" type="button"><span>◌</span><small>今天</small></button><button class="mobile-nav-item" data-view="journey" type="button"><span>↗</span><small>章节</small></button><button class="mobile-nav-item center-entry" id="mobile-clarity" type="button"><span>✦</span><small>有点乱</small></button><button class="mobile-nav-item" data-view="year" type="button"><span>⌁</span><small>一年</small></button><button class="mobile-nav-item" id="mobile-profile" type="button"><span>林</span><small>我的</small></button></nav>
+    </div>
+
+    <div class="modal-backdrop" id="modal-backdrop" hidden></div>
+    <section class="modal" id="clarity-modal" role="dialog" aria-modal="true" aria-labelledby="clarity-modal-title" hidden>
+      <button class="modal-close" data-close-modal type="button" aria-label="关闭">×</button>
+      <div class="modal-progress"><span class="active"></span><span></span><span></span></div>
+      <div class="modal-step active" data-step="1"><span class="modal-eyebrow">我现在有点乱 · 01</span><h2 id="clarity-modal-title">发生了什么？</h2><p>不用组织得很完整，把刚才发生的事写下来。</p><textarea id="clarity-input" placeholder="例如：今天早上收到一条模糊的工作消息……"></textarea><button class="primary-button full-button" data-next-step type="button">继续 <span>→</span></button></div>
+      <div class="modal-step" data-step="2"><span class="modal-eyebrow">我现在有点乱 · 02</span><h2>现在最强烈的感受是？</h2><p>先命名它，不需要解释它。</p><div class="emotion-grid"><button type="button">害怕</button><button type="button">愤怒</button><button type="button">无力</button><button type="button">羞耻</button><button type="button">后悔</button><button type="button">失望</button><button type="button">麻木</button><button type="button">其他</button></div><button class="primary-button full-button" data-next-step type="button">继续 <span>→</span></button></div>
+      <div class="modal-step" data-step="3"><span class="modal-eyebrow">我现在有点乱 · 03</span><h2>先把三层分开。</h2><p>这不是判定，只是让你不用同时背着三种东西。</p><div class="clarity-triad"><div><span>已经发生的事实</span><p>对方发来了一条消息，但没有说明截止时间。</p></div><div><span>你对事实的解释</span><p>我是不是又做得不够好，所以对方不愿明说？</p></div><div><span>你担心未来会发生什么</span><p>这可能会影响我接下来的工作安排。</p></div></div><div class="recommendation"><span>下一小时建议</span><strong>先不要立即回复，离开聊天界面 20 分钟。</strong><p>把真正需要确认的问题写成一句话，之后再决定是否发送。</p></div><div class="evidence-inline open-evidence" data-evidence="clarity"><button class="evidence-toggle" type="button"><span>⌘</span> 为什么这么建议？ <i>⌄</i></button><div class="evidence-body"></div></div><button class="primary-button full-button" data-close-modal type="button">先去做这一步 <span>→</span></button></div>
+    </section>
+
+    <section class="modal compact-modal" id="checkin-modal" role="dialog" aria-modal="true" aria-labelledby="checkin-title" hidden><button class="modal-close" data-close-modal type="button" aria-label="关闭">×</button><span class="modal-eyebrow">今日状态</span><h2 id="checkin-title">现在的你，在哪个位置？</h2><p>只记录当下，不需要把它变成结论。</p><div class="range-field"><label for="checkin-clarity">清晰度 <output id="checkin-clarity-output">3</output></label><input id="checkin-clarity" type="range" min="1" max="5" value="3" /></div><div class="range-field"><label for="checkin-energy">精力 <output id="checkin-energy-output">4</output></label><input id="checkin-energy" type="range" min="1" max="5" value="4" /></div><div class="range-field"><label for="checkin-stress">压力 <output id="checkin-stress-output">3</output></label><input id="checkin-stress" type="range" min="1" max="5" value="3" /></div><button class="primary-button full-button" id="save-checkin" type="button">保存今天的状态 <span>→</span></button></section>
+
+    <section class="modal compact-modal" id="onboarding-modal" role="dialog" aria-modal="true" aria-labelledby="onboarding-title" hidden><button class="modal-close" data-close-modal type="button" aria-label="关闭">×</button><div class="onboarding-top"><div class="brand-mark">知</div><span>我的底图 · 已建立</span></div><span class="modal-eyebrow">个人资料</span><h2 id="onboarding-title">让表达更像是对你说的。</h2><p>你的资料只用于生成个性化内容，不用于命定结论。</p><label class="form-label">你现在最关注什么？</label><div class="interest-grid"><button class="selected" type="button">工作</button><button type="button">钱</button><button type="button">关系</button><button type="button">自我方向</button><button type="button">家庭</button><button type="button">搬迁 / 留学</button></div><label class="form-label">表达方式</label><div class="style-options"><button class="selected" type="button"><strong>平衡</strong><small>温和，但会说清事实</small></button><button type="button"><strong>直接</strong><small>更快进入下一步</small></button></div><button class="primary-button full-button" data-close-modal type="button">保存设置 <span>→</span></button></section>
+
+    <section class="modal compact-modal safety-modal" id="safety-modal" role="dialog" aria-modal="true" aria-labelledby="safety-title" hidden><button class="modal-close" data-close-modal type="button" aria-label="关闭">×</button><span class="safety-icon">♡</span><span class="modal-eyebrow">安全边界</span><h2 id="safety-title">现实优先，命理只是文化视角。</h2><p>知时不会替代医疗、法律、财务或心理服务，也不会用“注定”“必然”制造恐惧。涉及高风险内容时，系统会优先建议你联系专业人士或可信任的人。</p><div class="safety-list"><span>✓ 不预测灾祸、生死和疾病</span><span>✓ 不替你做重大人生决定</span><span>✓ 所有判断都显示信息来源与限制</span></div><button class="primary-button full-button" data-close-modal type="button">我知道了 <span>→</span></button></section>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"><span>✓</span><span id="toast-message">已保存</span></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
