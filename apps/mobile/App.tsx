@@ -10,10 +10,11 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import { BaziSheet } from './src/BaziSheet';
 import { getApiHealth } from './src/api';
 
 type ViewKey = 'daily' | 'journey' | 'year';
-type ModalKey = 'clarity' | 'status' | 'safety' | 'profile' | null;
+type ModalKey = 'clarity' | 'status' | 'safety' | 'profile' | 'bazi' | null;
 
 const colors = {
   paper: '#F7F5EF',
@@ -168,8 +169,8 @@ function ProfileSheet({ onClose }: { onClose: () => void }) {
   return <Sheet title="我的底图" onClose={onClose}><Text style={styles.sheetEyebrow}>个人资料</Text><Text style={styles.sheetTitle}>让表达更像是对你说的。</Text><Text style={styles.sheetSubtitle}>你的资料只用于生成个性化内容，不用于命定结论。</Text><Text style={styles.choiceLabel}>你现在最关注什么？</Text><View style={styles.emotionGrid}>{['工作', '钱', '关系', '自我方向', '家庭', '搬迁 / 留学'].map(item => <Pressable key={item} style={styles.emotionButton}><Text>{item}</Text></Pressable>)}</View><PrimaryButton label="保存设置" onPress={onClose} /></Sheet>;
 }
 
-function TabBar({ view, setView, onClarity }: { view: ViewKey; setView: (view: ViewKey) => void; onClarity: () => void }) {
-  return <View style={styles.tabBar}><TabItem active={view === 'daily'} label="今天" icon="◌" onPress={() => setView('daily')} /><TabItem active={view === 'journey'} label="章节" icon="↗" onPress={() => setView('journey')} /><Pressable onPress={onClarity} style={styles.centerTab}><Text style={styles.centerTabIcon}>✦</Text><Text style={styles.centerTabLabel}>有点乱</Text></Pressable><TabItem active={view === 'year'} label="一年" icon="⌁" onPress={() => setView('year')} /><TabItem active={false} label="我的" icon="林" onPress={onClarity} /></View>;
+function TabBar({ view, setView, onClarity, onBazi }: { view: ViewKey; setView: (view: ViewKey) => void; onClarity: () => void; onBazi: () => void }) {
+  return <View style={styles.tabBar}><TabItem active={view === 'daily'} label="今天" icon="◌" onPress={() => setView('daily')} /><TabItem active={view === 'journey'} label="章节" icon="↗" onPress={() => setView('journey')} /><Pressable onPress={onClarity} style={styles.centerTab}><Text style={styles.centerTabIcon}>✦</Text><Text style={styles.centerTabLabel}>有点乱</Text></Pressable><TabItem active={view === 'year'} label="一年" icon="⌁" onPress={() => setView('year')} /><TabItem active={false} label="命盘" icon="盘" onPress={onBazi} /></View>;
 }
 
 function TabItem({ active, label, icon, onPress }: { active: boolean; label: string; icon: string; onPress: () => void }) {
@@ -185,11 +186,12 @@ export default function App() {
   useEffect(() => {
     getApiHealth().then(() => setApiOnline(true)).catch(() => setApiOnline(false));
   }, []);
-  return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={colors.paper} /><View style={styles.app}><Header onSafety={() => setModal('safety')} onProfile={() => setModal('profile')} apiOnline={apiOnline} /><ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>{view === 'daily' ? <DailyScreen onClarity={openClarity} onStatus={() => setModal('status')} /> : view === 'journey' ? <JourneyScreen onClarity={openClarity} /> : <YearScreen />}</ScrollView><TabBar view={view} setView={setView} onClarity={openClarity} />
+  return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={colors.paper} /><View style={styles.app}><Header onSafety={() => setModal('safety')} onProfile={() => setModal('profile')} apiOnline={apiOnline} /><ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>{view === 'daily' ? <DailyScreen onClarity={openClarity} onStatus={() => setModal('status')} /> : view === 'journey' ? <JourneyScreen onClarity={openClarity} /> : <YearScreen />}</ScrollView><TabBar view={view} setView={setView} onClarity={openClarity} onBazi={() => setModal('bazi')} />
     <Modal visible={modal === 'clarity'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><ClaritySheet step={clarityStep} setStep={setClarityStep} onClose={() => setModal(null)} /></View></Modal>
     <Modal visible={modal === 'status'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><StatusSheet onClose={() => setModal(null)} /></View></Modal>
     <Modal visible={modal === 'safety'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><SafetySheet onClose={() => setModal(null)} /></View></Modal>
     <Modal visible={modal === 'profile'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><ProfileSheet onClose={() => setModal(null)} /></View></Modal>
+    <Modal visible={modal === 'bazi'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><BaziSheet onClose={() => setModal(null)} /></View></Modal>
   </View></SafeAreaView>;
 }
 

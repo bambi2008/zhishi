@@ -28,7 +28,12 @@ from .store import store
 app = FastAPI(title="知时 API", version="0.1.0", description="东方人生导航 MVP 的结构化 API 骨架。")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://127.0.0.1:4173", "http://localhost:4173"],
+    allow_origins=[
+        "http://127.0.0.1:4173",
+        "http://localhost:4173",
+        "http://127.0.0.1:8081",
+        "http://localhost:8081",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

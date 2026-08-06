@@ -14,7 +14,7 @@
 - FastAPI API 骨架：Onboarding、Daily、AnxietySession、Journey、Year
 - `zhishi-bazi-core`：时区、历史夏令时、平太阳时、真太阳时、精确节气边界和双引擎审计
 - 统一 EvidenceChain 结构和高风险安全分流
-- React Native 移动端：Daily / Journey / Year、原生底部导航、原生弹层、API 健康状态连接
+- React Native 移动端：Daily / Journey / Year、原生底部导航、真实出生资料表单、四柱结果与计算审计展示
 
 ## 本地运行
 

@@ -1,4 +1,5 @@
 node_modules/
+apps/mobile/.expo/
 dist/
 build/
 __pycache__/
