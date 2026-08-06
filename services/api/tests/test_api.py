@@ -12,6 +12,24 @@ def test_health() -> None:
     assert response.json()["status"] == "ok"
 
 
+def test_bazi_calculation_endpoint_returns_audited_chart() -> None:
+    response = client.post(
+        "/api/v1/bazi/charts/calculate",
+        json={
+            "local_datetime": "2005-12-23T08:37:00",
+            "iana_timezone": "Asia/Shanghai",
+            "longitude": 121.4737,
+            "solar_time_mode": "civil",
+            "day_boundary_rule": "midnight",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["pillars"]["year"]["value"] == "乙酉"
+    assert body["pillars"]["hour"]["value"] == "壬辰"
+    assert body["audit"]["status"] == "passed"
+
+
 def test_onboarding_and_guidance_have_evidence_chain() -> None:
     profile = client.post(
         "/api/v1/onboarding",

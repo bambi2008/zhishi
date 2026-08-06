@@ -5,6 +5,8 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from .bazi import BaziCalculationInput, BaziCalculationResult, calculate_chart
+from .bazi.solar_time import TimeNormalizationError
 from .models import (
     Action,
     AnxietySession,
@@ -61,6 +63,17 @@ def build_daily_reasoning(checkin: DailyCheckIn | None) -> EvidenceChain:
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "zhishi-api", "version": app.version}
+
+
+@app.post("/api/v1/bazi/charts/calculate", response_model=BaziCalculationResult)
+def calculate_bazi_chart(payload: BaziCalculationInput) -> BaziCalculationResult:
+    try:
+        return calculate_chart(payload)
+    except TimeNormalizationError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
 
 
 @app.post("/api/v1/onboarding", response_model=UserProfile)

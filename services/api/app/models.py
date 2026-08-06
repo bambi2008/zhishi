@@ -35,6 +35,10 @@ class BirthProfile(BaseModel):
     birth_time_accuracy: Literal["exact", "approximate", "hour_only", "unknown"] = "unknown"
     birth_location_name: str
     iana_timezone: str = "Asia/Shanghai"
+    longitude: float | None = Field(default=None, ge=-180, le=180)
+    latitude: float | None = Field(default=None, ge=-90, le=90)
+    solar_time_mode: Literal["civil", "mean_solar", "apparent_solar"] = "civil"
+    day_boundary_rule: Literal["midnight", "late_zi_next_day"] = "midnight"
     gender: str | None = None
 
 
