@@ -18,6 +18,8 @@ npm run ios
 
 如需连接本地 FastAPI，在 `.env` 中设置 `EXPO_PUBLIC_API_BASE_URL`。Android 模拟器通常使用 `http://10.0.2.2:8000`，iOS 模拟器使用 `http://127.0.0.1:8000`；真机需要改成电脑在局域网中的地址。
 
-底部“命盘”入口已经连接真实 `zhishi-bazi-core`：用户填写出生日期、当地时间、IANA 时区与经度后，客户端会展示四柱、太阳时校正、最近节气边界、误差替代结果和双引擎审计状态。计算接口为 `POST /api/v1/bazi/charts/calculate`。
+底部“命盘”入口已经连接真实 `zhishi-bazi-core`：用户搜索出生城市即可自动填写 IANA 时区与经纬度，随后展示四柱、太阳时校正、最近节气边界、误差替代结果和双引擎审计状态。计算接口为 `POST /api/v1/bazi/charts/calculate`。
+
+命盘不会自动持久化。用户点击“保存”后，出生资料和计算结果通过 AsyncStorage 保存在当前设备；这属于未加密设备存储，不应用于共享设备。后续接入账户同步时应改用服务端加密存储和明确的删除机制。
 
 Windows 可以开发 Android / Expo Go；iOS 原生编译需要 macOS + Xcode。

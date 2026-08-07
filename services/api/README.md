@@ -38,6 +38,12 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 
 返回结果包含标准化时间、四柱及藏干/五行/十神/纳音、最近节气边界、时间误差备选、双引擎审计和确定性计算哈希。
 
+## 出生地搜索
+
+`GET /api/v1/locations/search?q=上海&language=zh&limit=6`
+
+接口返回地点显示名、WGS84 经纬度和 IANA 时区，供排盘输入使用。默认 MVP 提供方为 Open-Meteo Geocoding，底层地点数据来自 GeoNames；生产商业环境应设置 `OPEN_METEO_API_KEY`，或通过 `ZHISHI_GEOCODING_URL` 指向已授权/自托管的兼容服务。地点服务失败时返回可恢复的 `503`，客户端仍允许手动填写时区和经度。
+
 ## 引擎与边界策略
 
 - 主引擎：`lunar_python==1.4.8`

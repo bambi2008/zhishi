@@ -9,6 +9,20 @@ export type ApiHealth = {
 export type SolarTimeMode = 'civil' | 'mean_solar' | 'apparent_solar';
 export type DayBoundaryRule = 'midnight' | 'late_zi_next_day';
 
+export type LocationSearchResult = {
+  provider_id: number;
+  name: string;
+  display_name: string;
+  latitude: number;
+  longitude: number;
+  iana_timezone: string;
+  country_code?: string;
+  country?: string;
+  admin1?: string;
+  provider: 'open-meteo-geonames';
+  attribution: string;
+};
+
 export type BaziCalculationInput = {
   local_datetime: string;
   iana_timezone: string;
@@ -114,6 +128,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export function getApiHealth(): Promise<ApiHealth> {
   return request<ApiHealth>('/health');
+}
+
+export function searchBirthLocations(query: string, signal?: AbortSignal): Promise<LocationSearchResult[]> {
+  const params = new URLSearchParams({ q: query, language: 'zh', limit: '6' });
+  return request<LocationSearchResult[]>(`/api/v1/locations/search?${params.toString()}`, { signal });
 }
 
 export function calculateBaziChart(payload: BaziCalculationInput): Promise<BaziCalculationResult> {

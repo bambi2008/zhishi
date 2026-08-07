@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
 from .bazi import BaziCalculationInput, BaziCalculationResult, calculate_chart
 from .bazi.solar_time import TimeNormalizationError
+from .locations import LocationSearchError, LocationSearchResult, search_locations
 from .models import (
     Action,
     AnxietySession,
@@ -78,6 +79,21 @@ def calculate_bazi_chart(payload: BaziCalculationInput) -> BaziCalculationResult
         raise HTTPException(
             status_code=422,
             detail={"code": exc.code, "message": str(exc)},
+        ) from exc
+
+
+@app.get("/api/v1/locations/search", response_model=list[LocationSearchResult])
+def search_birth_locations(
+    q: str = Query(min_length=2, max_length=80),
+    language: str = Query(default="zh", pattern=r"^[a-z]{2}$"),
+    limit: int = Query(default=6, ge=1, le=10),
+) -> tuple[LocationSearchResult, ...]:
+    try:
+        return search_locations(q, language, limit)
+    except LocationSearchError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "location_provider_unavailable", "message": str(exc)},
         ) from exc
 
 
