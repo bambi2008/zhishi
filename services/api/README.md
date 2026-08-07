@@ -67,6 +67,8 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 
 旧的 `POST /api/v1/year-navigation/{year}` 解释骨架会明确返回 `501 year_navigation_requires_chart_context`。在解释层完成命盘绑定、流派规则、证据链和语言安全审核前，服务不会返回静态季度或领域判断来冒充个性化结果。
 
+`POST /api/v1/daily/guidance/generate` 与 `GET /api/v1/daily/guidance/today` 同样会返回 `501 daily_guidance_requires_real_context`。只有用户真实记录、审计命盘和生成规则完成绑定后，今日建议功能才会重新开放。
+
 ## 出生地搜索
 
 `POST /api/v1/locations/search`

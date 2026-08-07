@@ -17,12 +17,10 @@ from .bazi import (
 from .bazi.solar_time import TimeNormalizationError
 from .locations import LocationSearchError, LocationSearchInput, LocationSearchResult, search_locations
 from .models import (
-    Action,
     AnxietySession,
     AnxietySessionInput,
     DailyCheckIn,
     DailyCheckInInput,
-    DailyGuidance,
     EvidenceChain,
     EvidenceSource,
     LifeChapter,
@@ -80,24 +78,6 @@ def get_user(user_id: UUID) -> UserProfile:
     if user is None:
         raise HTTPException(status_code=404, detail="用户不存在")
     return user
-
-
-def build_daily_reasoning(checkin: DailyCheckIn | None) -> EvidenceChain:
-    checkin_summary = "今天还没有新的状态记录。"
-    if checkin:
-        checkin_summary = f"最近一次记录：压力 {checkin.stress}/5，精力 {checkin.energy}/5，情绪为“{checkin.emotion}”。"
-    return EvidenceChain(
-        human_summary="先收集事实，再决定是否推进。",
-        evidence_chain=[
-            EvidenceSource(source_type="bazi_cycle", title="命理周期依据", summary="真实节气和四柱计算将在独立引擎接入。", importance="background"),
-            EvidenceSource(source_type="daily_state", title="近期状态依据", summary=checkin_summary, importance="primary"),
-            EvidenceSource(source_type="current_reality", title="现实优先", summary="行动只针对当前可验证的信息，不替用户做重大决定。", importance="primary"),
-        ],
-        synthesis="当信息不足时，把事实、解释和担忧分开，通常比继续预测更有帮助。",
-        confidence="medium" if checkin else "low",
-        limitations=["当前为 API 骨架，尚未接入真实命理计算和长期行为数据。"],
-        alternative_interpretations=["压力变化也可能来自睡眠、工作量或现实事件，而非周期因素。"],
-    )
 
 
 @app.get("/health")
@@ -159,25 +139,21 @@ def create_checkin(user_id: UUID, payload: DailyCheckInInput) -> DailyCheckIn:
     return item
 
 
-@app.post("/api/v1/daily/guidance/generate", response_model=DailyGuidance)
-def generate_daily_guidance(user_id: UUID) -> DailyGuidance:
+@app.post("/api/v1/daily/guidance/generate", status_code=501)
+def generate_daily_guidance(user_id: UUID) -> None:
     get_user(user_id)
-    guidance = DailyGuidance(
-        user_id=user_id,
-        comfort_message="今天不需要把所有问题一次想明白，只需要确认一个事实。",
-        today_theme="先收集一个事实，再决定下一步。",
-        reality_observation="当前建议只参考你提供的状态和现实信息，不把不确定性包装成确定结论。",
-        action=Action(type="收集信息", title="把等待中的消息分成“已发生”和“我在猜”", description="写下三件挂念的事，并给每件标记：已发生 / 有证据 / 纯猜测。", estimated_minutes=15),
-        reasoning=build_daily_reasoning(store.latest_checkin(user_id)),
+    raise HTTPException(
+        status_code=501,
+        detail={
+            "code": "daily_guidance_requires_real_context",
+            "message": "今日建议尚未接入用户真实记录与审计命盘；服务不会返回固定建议冒充个性化结果。",
+        },
     )
-    store.guidance.setdefault(user_id, []).append(guidance)
-    return guidance
 
 
-@app.get("/api/v1/daily/guidance/today", response_model=DailyGuidance)
-def read_daily_guidance(user_id: UUID) -> DailyGuidance:
-    get_user(user_id)
-    return store.today_guidance(user_id) or generate_daily_guidance(user_id)
+@app.get("/api/v1/daily/guidance/today", status_code=501)
+def read_daily_guidance(user_id: UUID) -> None:
+    generate_daily_guidance(user_id)
 
 
 def classify_anxiety(payload: AnxietySessionInput) -> tuple[list[str], list[str], list[str], str, str, list[str]]:

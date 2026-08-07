@@ -16,7 +16,7 @@ import { BaziCurrentContextResult, calculateBaziCurrentContext, getApiHealth } f
 import { loadStoredBaziChart } from './src/chartStorage';
 
 type ViewKey = 'daily' | 'journey' | 'year';
-type ModalKey = 'clarity' | 'status' | 'safety' | 'profile' | 'bazi' | null;
+type ModalKey = 'clarity' | 'safety' | 'profile' | 'bazi' | null;
 
 const colors = {
   paper: '#F7F5EF',
@@ -32,26 +32,6 @@ const colors = {
   blue: '#70909E',
 };
 
-const evidenceCopy = {
-  daily: {
-    title: '为什么这么判断？',
-    sources: [
-      ['周期背景', '当前周期先观察后判断，真实四柱计算待引擎接入。'],
-      ['近期状态', '最近几次在等待回复时，重复搜索多于收集新信息。'],
-      ['现实输入', '今天的重点是等待一条工作相关回应。'],
-    ],
-    summary: '今天更有价值的不是快速下结论，而是把没有信息与坏结果分开。',
-  },
-  action: {
-    title: '为什么是这个行动？',
-    sources: [
-      ['现实事实', '行动直接对应今天的等待和模糊回应。'],
-      ['历史反馈', '此前收集事实后，清晰度平均上升。'],
-    ],
-    summary: '这是一个 15 分钟内可验证、不会锁死后续选择的小动作。',
-  },
-} as const;
-
 function Kicker({ label, color = colors.sage }: { label: string; color?: string }) {
   return <View style={styles.kicker}><View style={[styles.kickerDot, { backgroundColor: color }]} /><Text style={styles.kickerText}>{label}</Text></View>;
 }
@@ -64,62 +44,71 @@ function PrimaryButton({ label, onPress, done = false }: { label: string; onPres
   return <Pressable onPress={onPress} style={({ pressed }) => [styles.primaryButton, done && styles.primaryButtonDone, pressed && styles.pressed]}><Text style={styles.primaryButtonLabel}>{label}</Text><Text style={styles.primaryButtonArrow}>{done ? '✓' : '→'}</Text></Pressable>;
 }
 
-function EvidenceRow({ kind = 'daily' }: { kind?: keyof typeof evidenceCopy }) {
-  const [open, setOpen] = useState(false);
-  const data = evidenceCopy[kind];
-  return (
-    <View style={styles.evidenceWrap}>
-      <Pressable onPress={() => setOpen(!open)} style={styles.evidenceToggle}><Text style={styles.evidenceGlyph}>⌘</Text><Text style={styles.evidenceLabel}>{data.title}</Text><Text style={styles.evidenceChevron}>{open ? '⌃' : '⌄'}</Text></Pressable>
-      {open && <View style={styles.evidenceBody}>
-        {data.sources.map(([title, text]) => <View key={title} style={styles.evidenceSource}><Text style={styles.evidenceSourceTitle}>{title}</Text><Text style={styles.evidenceSourceText}>{text}</Text></View>)}
-        <Text style={styles.evidenceSummary}>{data.summary}</Text>
-        <View style={styles.evidenceMeta}><Text style={styles.evidenceMetaText}>可信度</Text><Text style={styles.evidenceMetaText}>中 · 信息仍可更新</Text></View>
-      </View>}
-    </View>
-  );
-}
-
 function Header({ onSafety, onProfile, apiOnline }: { onSafety: () => void; onProfile: () => void; apiOnline: boolean }) {
   return <View style={styles.header}>
     <View style={styles.brandLine}><View style={styles.brandMark}><Text style={styles.brandMarkText}>知</Text></View><View><Text style={styles.brandName}>知时</Text><Text style={styles.brandSubtitle}>{apiOnline ? '东方人生导航 · 已连接' : '东方人生导航'}</Text></View></View>
-    <View style={styles.headerRight}><Pressable onPress={onSafety} style={styles.headerIcon}><Text>♡</Text></Pressable><Pressable onPress={onProfile} style={styles.profileChip}><View style={styles.avatar}><Text style={styles.avatarText}>林</Text></View><Text style={styles.profileName}>林遥</Text><Text style={styles.chevron}>⌄</Text></Pressable></View>
+    <View style={styles.headerRight}><Pressable onPress={onSafety} style={styles.headerIcon}><Text>♡</Text></Pressable><Pressable onPress={onProfile} style={styles.profileChip}><View style={styles.avatar}><Text style={styles.avatarText}>我</Text></View><Text style={styles.profileName}>设置</Text><Text style={styles.chevron}>⌄</Text></Pressable></View>
   </View>;
 }
 
-function DailyScreen({ onClarity, onStatus }: { onClarity: () => void; onStatus: () => void }) {
-  const [done, setDone] = useState(false);
+type SavedBaziContextState = {
+  loading: boolean;
+  context: BaziCurrentContextResult | null;
+  timezone: string;
+  savedAt: string;
+  error: string;
+};
+
+function useSavedBaziContext(revision: number): SavedBaziContextState {
+  const [state, setState] = useState<SavedBaziContextState>({ loading: true, context: null, timezone: 'UTC', savedAt: '', error: '' });
+  useEffect(() => {
+    let active = true;
+    setState(previous => ({ ...previous, loading: true, error: '' }));
+    loadStoredBaziChart()
+      .then(stored => {
+        if (!active) return null;
+        if (!stored) {
+          setState({ loading: false, context: null, timezone: 'UTC', savedAt: '', error: '' });
+          return null;
+        }
+        return calculateBaziCurrentContext(stored.input).then(context => ({ context, stored }));
+      })
+      .then(result => {
+        if (!active || !result) return;
+        setState({ loading: false, context: result.context, timezone: result.stored.input.iana_timezone, savedAt: result.stored.saved_at, error: '' });
+      })
+      .catch(requestError => {
+        if (!active) return;
+        setState({ loading: false, context: null, timezone: 'UTC', savedAt: '', error: requestError instanceof Error ? requestError.message : '命盘上下文读取失败，请稍后重试。' });
+      });
+    return () => { active = false; };
+  }, [revision]);
+  return state;
+}
+
+function DailyScreen({ onClarity, onBazi, revision }: { onClarity: () => void; onBazi: () => void; revision: number }) {
+  const { loading, context, timezone, error } = useSavedBaziContext(revision);
+  const dateLabel = context?.as_of_local.replace('T', ' ').slice(0, 16) ?? new Date().toLocaleDateString('zh-CN');
   return <View>
-    <View style={styles.heading}><Text style={styles.eyebrow}>2026 年 8 月 6 日 · 星期四</Text><Text style={styles.pageTitle}>早上好，林遥。</Text><Text style={styles.pageSubtitle}>今天，先把一个不确定的地方照亮。</Text></View>
-    <View style={styles.rowCards}>
-      <View style={[styles.card, styles.focusCard]}>
-        <Kicker label="今日定向" /><Text style={styles.focusTitle}>不必急着证明，先收集一个事实。</Text><Text style={styles.bodyText}>你今天可能对模糊的回应更敏感，容易在信息还没齐的时候提前推演结果。把判断往后放一点，真正重要的信号才会浮出来。</Text><View style={styles.noteBox}><Text style={styles.noteLabel}>今天的安定句</Text><Text style={styles.noteText}>不需要一次想清全部，只要确认下一件真实发生的事。</Text></View><EvidenceRow kind="daily" />
-      </View>
-      <View style={[styles.card, styles.stateCard]}>
-        <View style={styles.cardTopline}><Kicker label="现在的状态" color={colors.gold} /><Pressable onPress={onStatus}><Text style={styles.textButton}>更新 ↗</Text></Pressable></View><View style={styles.orbit}><View style={styles.orbitRingOne} /><View style={styles.orbitRingTwo} /><View style={styles.orbitCenter}><Text style={styles.orbitScore}>3.4</Text><Text style={styles.orbitLabel}>清晰度</Text></View></View>
-        {[['压力', '中', colors.terracotta, 62], ['精力', '中上', colors.sage, 74], ['掌控感', '中', colors.lilac, 49]].map(([label, value, color, width]) => <View key={String(label)} style={styles.metricRow}><View style={styles.metricTrack}><View style={[styles.metricValue, { backgroundColor: String(color), width: `${Number(width)}%` }]} /></View><Text style={styles.metricLabel}>{label}</Text><Text style={styles.metricValueText}>{value}</Text></View>)}
-        <View style={styles.stateFooter}><Text>最近 7 天</Text><Text style={styles.trend}>清晰度 ↑ 0.6</Text></View>
-      </View>
-    </View>
-    <View style={styles.sectionHeading}><View><Kicker label="今天的一步" color={colors.terracotta} /><Text style={styles.sectionTitle}>一个可完成的行动</Text></View><Text style={styles.estimate}>预计 15 分钟</Text></View>
-    <View style={styles.card}><View style={styles.actionRow}><Text style={styles.actionNumber}>01</Text><View style={styles.actionCopy}><Text style={styles.actionType}>收集信息</Text><Text style={styles.actionTitle}>把等待中的消息，分成「已发生」和「我在猜」。</Text><Text style={styles.bodyText}>打开备忘录，写下你现在最挂念的三件事，并给每一件标记：已发生 / 有证据 / 纯猜测。</Text></View></View><PrimaryButton label={done ? '今天已完成' : '完成这一步'} done={done} onPress={() => setDone(!done)} /><EvidenceRow kind="action" /></View>
-    <View style={styles.twoCardRow}><Pressable onPress={onClarity} style={[styles.card, styles.clarityCard]}><Kicker label="随时可用" color={colors.blue} /><View style={styles.quickRow}><View><Text style={styles.quickTitle}>我现在有点乱</Text><Text style={styles.quickText}>把事实、解释和担心分开。</Text></View><ArrowButton onPress={onClarity} /></View></Pressable><View style={[styles.card, styles.chapterCard]}><Kicker label="当前人生章节" color={colors.lilac} /><Text style={styles.chapterStatus}>探索中 · 已持续 18 天</Text><Text style={styles.chapterTitle}>在可修复的地方，重建工作节奏</Text><Text style={styles.chapterText}>下一个节点：确认三个外部岗位的真实要求</Text></View></View>
-    <View style={styles.mirrorStrip}><Kicker label="七日镜像" color="#BC8C91" /><Text style={styles.mirrorTitle}>你已经比三天前更清楚了。</Text><Text style={styles.bodyText}>这周你 4 次选择了先收集事实，其中 3 次减少了反复搜索。</Text><View style={styles.chart}>{[34, 44, 38, 59, 54, 72, 80].map((height, i) => <View key={i} style={[styles.chartBar, i === 6 && styles.chartBarCurrent, { height: `${height}%` }]} />)}</View></View>
+    <View style={styles.heading}><Text style={styles.eyebrow}>TODAY · {dateLabel}</Text><Text style={styles.pageTitle}>今天，只显示有依据的内容。</Text><Text style={styles.pageSubtitle}>当前版本不根据命理自动生成行动建议；这里先提供可复算的周期位置和一个不替你下结论的梳理工具。</Text></View>
+    {loading ? <View style={[styles.card, styles.yearLoadingCard]}><ActivityIndicator color={colors.sageDeep} /><Text style={styles.yearLoadingText}>正在读取本机命盘并定位当前周期…</Text></View> : null}
+    {!loading && !context && !error ? <View style={[styles.card, styles.todayEmptyCard]}><Kicker label="从真实命盘开始" color={colors.terracotta} /><Text style={styles.todayEmptyTitle}>没有命盘，就不生成“今日判断”。</Text><Text style={styles.todayEmptyText}>先完成排盘并主动保存。系统会使用你的出生时区、精确节气边界和规则审计结果。</Text><PrimaryButton label="建立并保存命盘" onPress={onBazi} /></View> : null}
+    {!loading && error ? <View style={[styles.card, styles.yearErrorCard]}><Kicker label="读取失败" color={colors.terracotta} /><Text style={styles.todayEmptyTitle}>当前周期没有通过读取。</Text><Text style={styles.todayEmptyText}>{error}</Text><PrimaryButton label="检查命盘" onPress={onBazi} /></View> : null}
+    {!loading && context && !context.user_visible ? <View style={[styles.card, styles.yearErrorCard]}><Kicker label="审计未通过" color={colors.terracotta} /><Text style={styles.todayEmptyTitle}>结果已停止展示。</Text><Text style={styles.todayEmptyText}>知时不会用近似结果替代失败结果。请更新命盘后再试。</Text><PrimaryButton label="更新命盘" onPress={onBazi} /></View> : null}
+    {!loading && context?.user_visible ? <>
+      <View style={[styles.card, styles.todayCycleHero]}><View style={styles.todayCycleTop}><Kicker label="当前确定性周期" color={colors.terracotta} /><Text style={styles.todayVerified}>校验通过</Text></View><View style={styles.todayPillarRow}><View style={styles.todayPillarItem}><Text style={styles.todayPillarLabel}>流年</Text><Text style={styles.todayPillarValue}>{context.annual_cycle.pillar.value}</Text><Text style={styles.todayPillarMeta}>{context.annual_cycle.label_year}</Text></View><View style={styles.todayPillarDivider} /><View style={styles.todayPillarItem}><Text style={styles.todayPillarLabel}>流月</Text><Text style={styles.todayPillarValue}>{context.monthly_cycle.pillar.value}</Text><Text style={styles.todayPillarMeta}>第 {context.monthly_cycle.sequence_from_lichun} 月</Text></View></View><View style={styles.todayBoundaryBox}><Text style={styles.todayBoundaryLabel}>下次流月交接 · {context.monthly_cycle.end_boundary.name}</Text><Text style={styles.todayBoundaryValue}>{formatCycleBoundary(context.monthly_cycle.end_boundary.boundary_time_utc, timezone)}</Text></View></View>
+      <View style={[styles.card, styles.todayChartCard]}><Kicker label="命盘底图" color={colors.sage} /><View style={styles.todayChartPillars}>{(['year', 'month', 'day', 'hour'] as const).map(key => <View key={key} style={styles.todayChartPillar}><Text style={styles.todayChartLabel}>{{ year: '年', month: '月', day: '日', hour: '时' }[key]}</Text><Text style={styles.todayChartValue}>{context.chart.pillars[key].value}</Text></View>)}</View><Text style={styles.todayEvidence}>{context.audit.primary_engine} × {context.audit.verification_engine}</Text><Text style={styles.todayEvidence}>{context.chart.rule_profile.timezone_database} · {context.chart.calculation_hash.slice(0, 12)}</Text><Pressable onPress={onBazi} style={styles.todayTextButton}><Text style={styles.todayTextButtonLabel}>查看或更新命盘 →</Text></Pressable></View>
+    </> : null}
+    <Pressable onPress={onClarity} style={[styles.card, styles.todayClarityCard]}><Kicker label="不依赖命理" color={colors.blue} /><View style={styles.quickRow}><View style={{ flex: 1 }}><Text style={styles.quickTitle}>我现在有点乱</Text><Text style={styles.quickText}>只整理你实际填写的事实、感受、解释和担心。</Text></View><ArrowButton onPress={onClarity} /></View></Pressable>
   </View>;
 }
 
 function JourneyScreen({ onClarity }: { onClarity: () => void }) {
   return <View>
-    <View style={styles.heading}><Text style={styles.eyebrow}>JOURNEY · 一个人生章节</Text><Text style={styles.pageTitle}>把一件事，走得更清楚。</Text><Text style={styles.pageSubtitle}>不替你决定，只陪你把事实和选择放在一起。</Text></View>
-    <View style={[styles.card, styles.journeyHero]}><View style={{ flex: 1 }}><Text style={styles.chapterStatus}>进行中 · 第 18 天</Text><Text style={styles.journeyTitle}>在可修复的地方，重建工作节奏</Text><Text style={styles.bodyText}>你正在探索：要不要换工作，以及什么条件会让这个选择变得更真实。</Text></View><View style={styles.progressCircle}><Text style={styles.progressNumber}>42%</Text><Text style={styles.progressLabel}>章节进度</Text></View></View>
-    <View style={styles.sectionHeading}><View><Kicker label="当前状态" color={colors.gold} /><Text style={styles.sectionTitle}>不是没有答案，是信息还在路上。</Text></View></View>
-    <View style={styles.card}><TimelineItem state="done" label="已完成 · 8 月 2 日" title="整理现金储备与可承受周期" text="已确认至少可以维持 5 个月的基础支出。" /><TimelineItem state="active" label="正在进行 · 今天" title="确认三个外部岗位的真实要求" text="不要先判断自己行不行，先把岗位事实收集完整。" action="记录进展" /><TimelineItem state="upcoming" label="待验证 · 本周" title="和一位可信任的人讨论选择条件" text="" /></View>
-    <View style={[styles.card, styles.conditionsCard]}><Kicker label="关键待验证" color={colors.lilac} />{['外部岗位数量是否足够', '当前工作是否仍可修复', '身体和精力是否允许转换'].map((item, i) => <View key={item} style={styles.conditionRow}><Text style={styles.conditionNumber}>0{i + 1}</Text><Text style={styles.conditionText}>{item}</Text></View>)}<EvidenceRow kind="action" /></View>
-    <View style={styles.bottomNotice}><Kicker label="章节提醒" color={colors.blue} /><Text style={styles.noticeText}>先别把“想离开”直接翻译成“必须辞职”。你现在要验证的是：有没有更适合的结构。</Text><Pressable onPress={onClarity} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>写一条今天的记录 →</Text></Pressable></View>
+    <View style={styles.heading}><Text style={styles.eyebrow}>JOURNEY · 人生章节</Text><Text style={styles.pageTitle}>没有真实记录，就不编一段人生进度。</Text><Text style={styles.pageSubtitle}>章节功能需要用户实际目标、事件、验证点和时间线；这些数据尚未接入前，知时不会显示虚构的“第 18 天”或完成比例。</Text></View>
+    <View style={[styles.card, styles.journeyEmptyCard]}><Kicker label="真实记录模块待接入" color={colors.lilac} /><Text style={styles.journeyEmptyTitle}>当前没有可展示的人生章节。</Text><Text style={styles.journeyEmptyText}>后续章节会由你创建，进度只根据你保存的事件和验证点更新，不由命理或模型替你决定。</Text><PrimaryButton label="先做一次事实梳理" onPress={onClarity} /></View>
+    <View style={styles.journeyPrinciples}><View style={styles.journeyPrinciple}><Text style={styles.journeyPrincipleNumber}>01</Text><Text style={styles.journeyPrincipleTitle}>你定义问题</Text><Text style={styles.journeyPrincipleText}>不预设你正在换工作、搬家或处理关系。</Text></View><View style={styles.journeyPrinciple}><Text style={styles.journeyPrincipleNumber}>02</Text><Text style={styles.journeyPrincipleTitle}>事件才算进度</Text><Text style={styles.journeyPrincipleText}>没有保存的事实，就不显示百分比或趋势。</Text></View><View style={styles.journeyPrinciple}><Text style={styles.journeyPrincipleNumber}>03</Text><Text style={styles.journeyPrincipleTitle}>解释与事实分开</Text><Text style={styles.journeyPrincipleText}>文化视角会单独标识，不冒充现实证据。</Text></View></View>
   </View>;
-}
-
-function TimelineItem({ state, label, title, text, action }: { state: 'done' | 'active' | 'upcoming'; label: string; title: string; text: string; action?: string }) {
-  return <View style={styles.timelineItem}><View style={[styles.timelineDot, state === 'active' && styles.timelineDotActive]} /><View style={styles.timelineContent}><Text style={styles.timelineLabel}>{label}</Text><Text style={styles.timelineTitle}>{title}</Text>{text ? <Text style={styles.timelineText}>{text}</Text> : null}{action ? <Pressable style={styles.smallButton}><Text style={styles.smallButtonText}>{action} →</Text></Pressable> : null}</View></View>;
 }
 
 function formatCycleBoundary(value: string, timezone: string): string {
@@ -141,41 +130,7 @@ function formatCycleBoundary(value: string, timezone: string): string {
 }
 
 function YearScreen({ onBazi, revision }: { onBazi: () => void; revision: number }) {
-  const [loading, setLoading] = useState(true);
-  const [context, setContext] = useState<BaziCurrentContextResult | null>(null);
-  const [timezone, setTimezone] = useState('UTC');
-  const [savedAt, setSavedAt] = useState('');
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setError('');
-    loadStoredBaziChart()
-      .then(stored => {
-        if (!active) return null;
-        if (!stored) {
-          setContext(null);
-          setSavedAt('');
-          return null;
-        }
-        setTimezone(stored.input.iana_timezone);
-        setSavedAt(stored.saved_at);
-        return calculateBaziCurrentContext(stored.input);
-      })
-      .then(result => {
-        if (active && result) setContext(result);
-      })
-      .catch(requestError => {
-        if (!active) return;
-        setContext(null);
-        setError(requestError instanceof Error ? requestError.message : '年度周期读取失败，请稍后重试。');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => { active = false; };
-  }, [revision]);
+  const { loading, context, timezone, savedAt, error } = useSavedBaziContext(revision);
 
   const annual = context?.annual_cycle;
   const monthly = context?.monthly_cycle;
@@ -210,12 +165,15 @@ function YearScreen({ onBazi, revision }: { onBazi: () => void; revision: number
 function ClaritySheet({ step, setStep, onClose }: { step: number; setStep: (step: number) => void; onClose: () => void }) {
   const [input, setInput] = useState('');
   const [emotion, setEmotion] = useState('');
+  const [interpretation, setInterpretation] = useState('');
+  const [worry, setWorry] = useState('');
+  const [question, setQuestion] = useState('');
   const emotions = ['害怕', '愤怒', '无力', '羞耻', '后悔', '失望', '麻木', '其他'];
   return <Sheet title="我现在有点乱" onClose={onClose}>
     <View style={styles.sheetProgress}>{[1, 2, 3].map(i => <View key={i} style={[styles.sheetProgressBar, i <= step && styles.sheetProgressActive]} />)}</View>
-    {step === 1 && <><Text style={styles.sheetEyebrow}>01 · 发生了什么？</Text><Text style={styles.sheetTitle}>把刚刚发生的事写下来。</Text><Text style={styles.sheetSubtitle}>不用组织得很完整，先留下一件真实发生的事。</Text><TextInput value={input} onChangeText={setInput} multiline placeholder="例如：今天早上收到一条模糊的工作消息……" placeholderTextColor="#A9ADA4" style={styles.textArea} /><PrimaryButton label="继续" onPress={() => setStep(2)} /></>}
-    {step === 2 && <><Text style={styles.sheetEyebrow}>02 · 现在最强烈的感受是？</Text><Text style={styles.sheetTitle}>先命名它，不需要解释它。</Text><Text style={styles.sheetSubtitle}>情绪是信号，不是最后的结论。</Text><View style={styles.emotionGrid}>{emotions.map(item => <Pressable key={item} onPress={() => setEmotion(item)} style={[styles.emotionButton, emotion === item && styles.emotionSelected]}><Text>{item}</Text></Pressable>)}</View><PrimaryButton label="继续" onPress={() => setStep(3)} /></>}
-    {step === 3 && <><Text style={styles.sheetEyebrow}>03 · 先把三层分开。</Text><Text style={styles.sheetTitle}>你不需要同时背着三种东西。</Text>{[['已经发生的事实', '对方发来了一条消息，但没有说明截止时间。'], ['你对事实的解释', '我是不是又做得不够好，所以对方不愿明说？'], ['你担心未来会发生什么', '这可能会影响我接下来的工作安排。']].map(([label, text]) => <View key={label} style={styles.triadItem}><Text style={styles.triadLabel}>{label}</Text><Text style={styles.triadText}>{text}</Text></View>)}<View style={styles.recommendation}><Text style={styles.triadLabel}>下一小时建议</Text><Text style={styles.recommendationTitle}>先不要立即回复，离开聊天界面 20 分钟。</Text><Text style={styles.triadText}>把真正需要确认的问题写成一句话，之后再决定是否发送。</Text></View><EvidenceRow kind="action" /><PrimaryButton label="先去做这一步" onPress={onClose} /></>}
+    {step === 1 && <><Text style={styles.sheetEyebrow}>01 · 发生了什么？</Text><Text style={styles.sheetTitle}>只写你确认发生的事。</Text><Text style={styles.sheetSubtitle}>不用组织得很完整，也先不要解释原因。</Text><TextInput value={input} onChangeText={setInput} multiline placeholder="例如：我收到一条消息，对方没有说明截止时间。" placeholderTextColor="#A9ADA4" style={styles.textArea} /><PrimaryButton label={input.trim() ? '继续' : '先写下一件事实'} onPress={() => { if (input.trim()) setStep(2); }} /></>}
+    {step === 2 && <><Text style={styles.sheetEyebrow}>02 · 现在最强烈的感受是？</Text><Text style={styles.sheetTitle}>先命名它，不把它当结论。</Text><Text style={styles.sheetSubtitle}>这里不会根据情绪自动推断你的处境。</Text><View style={styles.emotionGrid}>{emotions.map(item => <Pressable key={item} onPress={() => setEmotion(item)} style={[styles.emotionButton, emotion === item && styles.emotionSelected]}><Text>{item}</Text></Pressable>)}</View><PrimaryButton label={emotion ? '继续' : '先选择一种感受'} onPress={() => { if (emotion) setStep(3); }} /></>}
+    {step === 3 && <><Text style={styles.sheetEyebrow}>03 · 把事实、解释和担心分开。</Text><Text style={styles.sheetTitle}>以下内容全部来自你。</Text><View style={styles.triadItem}><Text style={styles.triadLabel}>已经发生的事实</Text><Text style={styles.triadText}>{input}</Text></View><View style={styles.triadItem}><Text style={styles.triadLabel}>当下感受</Text><Text style={styles.triadText}>{emotion}</Text></View><Text style={styles.clarityFieldLabel}>你对事实的解释</Text><TextInput value={interpretation} onChangeText={setInterpretation} multiline placeholder="例如：我觉得对方可能不重视这件事。" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.clarityFieldLabel}>你担心未来会发生什么</Text><TextInput value={worry} onChangeText={setWorry} multiline placeholder="例如：我担心这会影响后续安排。" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.clarityFieldLabel}>下一步只确认哪一个问题？</Text><TextInput value={question} onChangeText={setQuestion} multiline placeholder="例如：这件事的截止时间是什么？" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><View style={styles.recommendation}><Text style={styles.triadLabel}>本次梳理</Text><Text style={styles.recommendationTitle}>{question.trim() || '写下一个可以向现实确认的问题。'}</Text><Text style={styles.triadText}>知时没有替你判断，也没有根据命理生成建议。当前 MVP 不保存这次文字记录。</Text></View><PrimaryButton label="完成本次梳理" onPress={onClose} /></>}
   </Sheet>;
 }
 
@@ -223,17 +181,12 @@ function Sheet({ title, children, onClose }: { title: string; children: React.Re
   return <View style={styles.sheet}><View style={styles.sheetHeader}><Text style={styles.sheetHeaderTitle}>{title}</Text><Pressable onPress={onClose}><Text style={styles.closeText}>×</Text></Pressable></View><ScrollView contentContainerStyle={styles.sheetContent} keyboardShouldPersistTaps="handled">{children}</ScrollView></View>;
 }
 
-function StatusSheet({ onClose }: { onClose: () => void }) {
-  const [clarity, setClarity] = useState(3);
-  return <Sheet title="现在的状态" onClose={onClose}><Text style={styles.sheetEyebrow}>今日状态</Text><Text style={styles.sheetTitle}>只记录当下，不把它变成结论。</Text>{([['清晰度', clarity, setClarity], ['精力', 4, () => undefined], ['压力', 3, () => undefined]] as Array<[string, number, (value: number) => void]>).map(([label, value, setValue]) => <View key={String(label)} style={styles.choiceRow}><View style={styles.choiceHeader}><Text style={styles.choiceLabel}>{label}</Text><Text style={styles.choiceValue}>{String(value)}</Text></View><View style={styles.choiceButtons}>{[1, 2, 3, 4, 5].map(item => <Pressable key={item} onPress={() => (setValue as (n: number) => void)(item)} style={[styles.choiceButton, item === value && styles.choiceButtonActive]}><Text>{item}</Text></Pressable>)}</View></View>)}<PrimaryButton label="保存今天的状态" onPress={onClose} /></Sheet>;
-}
-
 function SafetySheet({ onClose }: { onClose: () => void }) {
   return <Sheet title="安全、隐私与使用条款" onClose={onClose}><View style={styles.safetyIcon}><Text>♡</Text></View><Text style={styles.sheetTitle}>现实优先，命理只是文化视角。</Text><Text style={styles.sheetSubtitle}>知时面向 18 岁以上用户，不替代医疗、法律、财务或心理服务，也不会用“注定”“必然”制造恐惧。涉及高风险内容时，请联系专业人士或可信任的人。</Text>{['不预测灾祸、生死和疾病', '不替你做重大人生决定', '确定性计算与文化解释分层显示', '当前 MVP 不销售数据或投放行为广告'].map(item => <Text key={item} style={styles.safetyItem}>✓  {item}</Text>)}<View style={styles.legalNoticeCard}><Text style={styles.legalNoticeTitle}>美国与欧洲客户基线</Text><Text style={styles.legalNoticeText}>排盘按你提交的出生日期、时间、地点和规则正常计算。选择非精确时间不会停止计算，但实际时刻偏差可能改变四柱、大运、流年和流月。</Text><Text style={styles.legalNoticeText}>出生资料会发送到配置的计算 API；当前 MVP 不主动持久化计算请求。只有你点击“保存”后，命盘才保存在本机并可随时清除。请勿在未获授权时填写他人的个人资料。</Text><Text style={styles.legalNoticeText}>你可依据适用的 GDPR、UK GDPR 或美国州隐私法请求访问、更正、删除或选择退出。未来若使用 AI 生成解释，产品会明确标识；法定消费者权利不因本提示而被排除。</Text></View><PrimaryButton label="我知道了" onPress={onClose} /></Sheet>;
 }
 
 function ProfileSheet({ onClose }: { onClose: () => void }) {
-  return <Sheet title="我的底图" onClose={onClose}><Text style={styles.sheetEyebrow}>个人资料</Text><Text style={styles.sheetTitle}>让表达更像是对你说的。</Text><Text style={styles.sheetSubtitle}>你的资料只用于生成个性化内容，不用于命定结论。</Text><Text style={styles.choiceLabel}>你现在最关注什么？</Text><View style={styles.emotionGrid}>{['工作', '钱', '关系', '自我方向', '家庭', '搬迁 / 留学'].map(item => <Pressable key={item} style={styles.emotionButton}><Text>{item}</Text></Pressable>)}</View><PrimaryButton label="保存设置" onPress={onClose} /></Sheet>;
+  return <Sheet title="设置" onClose={onClose}><Text style={styles.sheetEyebrow}>当前 MVP</Text><Text style={styles.sheetTitle}>账户与偏好尚未接入。</Text><Text style={styles.sheetSubtitle}>知时目前不会假装记住姓名、关注领域或状态。命盘只有在你明确点击保存后才保留在本机，可从“命盘”页随时清除。</Text><View style={styles.legalNoticeCard}><Text style={styles.legalNoticeTitle}>已生效的设置</Text><Text style={styles.legalNoticeText}>排盘时选择的时间模式、换日规则、起运算法和出生时间精度会写入该命盘的计算哈希。其他个性化设置尚未启用。</Text></View><PrimaryButton label="关闭" onPress={onClose} /></Sheet>;
 }
 
 function TabBar({ view, setView, onClarity, onBazi }: { view: ViewKey; setView: (view: ViewKey) => void; onClarity: () => void; onBazi: () => void }) {
@@ -254,9 +207,8 @@ export default function App() {
   useEffect(() => {
     getApiHealth().then(() => setApiOnline(true)).catch(() => setApiOnline(false));
   }, []);
-  return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={colors.paper} /><View style={styles.app}><Header onSafety={() => setModal('safety')} onProfile={() => setModal('profile')} apiOnline={apiOnline} /><ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>{view === 'daily' ? <DailyScreen onClarity={openClarity} onStatus={() => setModal('status')} /> : view === 'journey' ? <JourneyScreen onClarity={openClarity} /> : <YearScreen onBazi={() => setModal('bazi')} revision={chartRevision} />}</ScrollView><TabBar view={view} setView={setView} onClarity={openClarity} onBazi={() => setModal('bazi')} />
+  return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={colors.paper} /><View style={styles.app}><Header onSafety={() => setModal('safety')} onProfile={() => setModal('profile')} apiOnline={apiOnline} /><ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>{view === 'daily' ? <DailyScreen onClarity={openClarity} onBazi={() => setModal('bazi')} revision={chartRevision} /> : view === 'journey' ? <JourneyScreen onClarity={openClarity} /> : <YearScreen onBazi={() => setModal('bazi')} revision={chartRevision} />}</ScrollView><TabBar view={view} setView={setView} onClarity={openClarity} onBazi={() => setModal('bazi')} />
     <Modal visible={modal === 'clarity'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><ClaritySheet step={clarityStep} setStep={setClarityStep} onClose={() => setModal(null)} /></View></Modal>
-    <Modal visible={modal === 'status'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><StatusSheet onClose={() => setModal(null)} /></View></Modal>
     <Modal visible={modal === 'safety'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><SafetySheet onClose={() => setModal(null)} /></View></Modal>
     <Modal visible={modal === 'profile'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><ProfileSheet onClose={() => setModal(null)} /></View></Modal>
     <Modal visible={modal === 'bazi'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><BaziSheet onClose={() => setModal(null)} onChartStorageChange={() => setChartRevision(value => value + 1)} /></View></Modal>
@@ -273,4 +225,9 @@ const styles = StyleSheet.create({
   yearCycleGrid: { gap: 11, marginTop: 13 }, yearCycleCard: { minHeight: 155 }, yearCyclePillar: { color: colors.ink, fontSize: 28, fontWeight: '600', letterSpacing: 3, marginTop: 20 }, yearCycleMeta: { color: colors.sageDeep, fontSize: 10, fontWeight: '600', marginTop: 8 }, yearCycleDetail: { color: colors.muted, fontSize: 9, lineHeight: 15, marginTop: 7 },
   yearAuditCard: { marginTop: 13, backgroundColor: '#F2F5ED' }, yearAuditTitle: { color: colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 23, marginTop: 16 }, yearAuditText: { color: colors.muted, fontSize: 9, lineHeight: 15, marginTop: 7 },
   yearInterpretationNotice: { backgroundColor: '#EEEFE7', borderRadius: 15, padding: 17, marginTop: 13 }, yearInterpretationTitle: { color: colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 23, marginTop: 12 }, yearInterpretationText: { color: colors.muted, fontSize: 10, lineHeight: 17, marginTop: 7 },
+  todayEmptyCard: { backgroundColor: '#FAF2E8' }, todayEmptyTitle: { color: colors.ink, fontSize: 21, fontWeight: '600', lineHeight: 29, marginTop: 20 }, todayEmptyText: { color: colors.muted, fontSize: 11, lineHeight: 19, marginTop: 10 },
+  todayCycleHero: { backgroundColor: '#FAF2E8' }, todayCycleTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, todayVerified: { color: colors.sageDeep, backgroundColor: '#E3ECE0', borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, fontSize: 8, fontWeight: '700' }, todayPillarRow: { flexDirection: 'row', alignItems: 'center', marginTop: 25 }, todayPillarItem: { flex: 1, alignItems: 'center' }, todayPillarLabel: { color: colors.muted, fontSize: 9 }, todayPillarValue: { color: colors.ink, fontSize: 31, fontWeight: '600', letterSpacing: 4, marginTop: 8 }, todayPillarMeta: { color: colors.terracotta, fontSize: 8, marginTop: 5 }, todayPillarDivider: { width: 1, height: 70, backgroundColor: 'rgba(199,122,89,0.18)' }, todayBoundaryBox: { backgroundColor: 'rgba(255,253,248,0.88)', borderRadius: 12, padding: 12, marginTop: 22 }, todayBoundaryLabel: { color: colors.terracotta, fontSize: 9, fontWeight: '600' }, todayBoundaryValue: { color: colors.ink, fontSize: 11, marginTop: 6 },
+  todayChartCard: { marginTop: 13, backgroundColor: '#F2F5ED' }, todayChartPillars: { flexDirection: 'row', gap: 7, marginTop: 17 }, todayChartPillar: { flex: 1, alignItems: 'center', backgroundColor: colors.card, borderRadius: 11, paddingVertical: 11 }, todayChartLabel: { color: colors.muted, fontSize: 8 }, todayChartValue: { color: colors.ink, fontSize: 17, fontWeight: '600', marginTop: 7 }, todayEvidence: { color: colors.muted, fontSize: 8, textAlign: 'center', marginTop: 10 }, todayTextButton: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 10, marginTop: 6 }, todayTextButtonLabel: { color: colors.sageDeep, fontSize: 9, fontWeight: '600' }, todayClarityCard: { marginTop: 13, backgroundColor: '#E9EEEA' },
+  journeyEmptyCard: { backgroundColor: '#F2F1F5' }, journeyEmptyTitle: { color: colors.ink, fontSize: 21, fontWeight: '600', lineHeight: 29, marginTop: 20 }, journeyEmptyText: { color: colors.muted, fontSize: 11, lineHeight: 19, marginTop: 10 }, journeyPrinciples: { gap: 10, marginTop: 14 }, journeyPrinciple: { borderWidth: 1, borderColor: colors.line, borderRadius: 14, backgroundColor: colors.card, padding: 15 }, journeyPrincipleNumber: { color: colors.lilac, fontSize: 9 }, journeyPrincipleTitle: { color: colors.ink, fontSize: 14, fontWeight: '600', marginTop: 8 }, journeyPrincipleText: { color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 5 },
+  clarityFieldLabel: { color: '#737970', fontSize: 10, marginTop: 14, marginBottom: 7 }, clarityInput: { minHeight: 70, borderWidth: 1, borderColor: 'rgba(43,48,43,0.18)', borderRadius: 11, padding: 12, color: colors.ink, fontSize: 11, lineHeight: 17, textAlignVertical: 'top', backgroundColor: '#FFFDF8' },
 });

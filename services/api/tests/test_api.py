@@ -193,16 +193,18 @@ def test_cors_preflight_is_limited_to_trusted_origins_and_declared_operations() 
     assert "access-control-allow-origin" not in untrusted.headers
 
 
-def test_onboarding_and_guidance_have_evidence_chain() -> None:
+def test_unbound_daily_guidance_is_disabled_instead_of_fabricated() -> None:
     profile = client.post(
         "/api/v1/onboarding",
         json={"email": "test@example.com", "focus_area": "career", "current_question": "是否换工作"},
     )
     assert profile.status_code == 200
     user_id = profile.json()["user_id"]
-    guidance = client.post(f"/api/v1/daily/guidance/generate?user_id={user_id}")
-    assert guidance.status_code == 200
-    assert guidance.json()["reasoning"]["evidence_chain"]
+    generated = client.post(f"/api/v1/daily/guidance/generate?user_id={user_id}")
+    today = client.get(f"/api/v1/daily/guidance/today?user_id={user_id}")
+    assert generated.status_code == today.status_code == 501
+    assert generated.json()["detail"]["code"] == "daily_guidance_requires_real_context"
+    assert today.json()["detail"]["code"] == "daily_guidance_requires_real_context"
 
 
 def test_unbound_year_interpretation_is_disabled_instead_of_fabricated() -> None:
