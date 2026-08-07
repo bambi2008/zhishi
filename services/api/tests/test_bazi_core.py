@@ -200,6 +200,10 @@ def test_current_context_locates_active_luck_and_annual_cycle() -> None:
     assert result.current_luck.next_transition_local == datetime(2031, 4, 23, 18, 37)
     assert result.annual_cycle.label_year == 2026
     assert result.annual_cycle.pillar.value == "丙午"
+    assert result.monthly_cycle.sequence_from_lichun == 6
+    assert result.monthly_cycle.pillar.value == "乙未"
+    assert result.monthly_cycle.start_boundary.name == "小暑"
+    assert result.monthly_cycle.end_boundary.name == "立秋"
     assert result.audit.status == "passed"
 
 
@@ -224,6 +228,20 @@ def test_current_luck_switches_at_exclusive_period_boundary() -> None:
     assert after.current_luck.current_period is not None
     assert before.current_luck.current_period.pillar.value == "丁亥"
     assert after.current_luck.current_period.pillar.value == "丙戌"
+
+
+def test_monthly_cycle_switches_at_exact_jie_instant() -> None:
+    boundary = datetime(2026, 8, 7, 11, 42, 43, tzinfo=UTC)
+    before = current_context(boundary - timedelta(seconds=1))
+    after = current_context(boundary)
+
+    assert before.monthly_cycle.pillar.value == "乙未"
+    assert before.monthly_cycle.end_boundary.name == "立秋"
+    assert before.monthly_cycle.end_boundary.boundary_time_utc == boundary
+    assert after.monthly_cycle.pillar.value == "丙申"
+    assert after.monthly_cycle.start_boundary.name == "立秋"
+    assert after.monthly_cycle.start_boundary.boundary_time_utc == boundary
+    assert before.audit.status == after.audit.status == "passed"
 
 
 def test_current_context_reports_pre_luck_state() -> None:

@@ -211,7 +211,7 @@ def create_year_navigation(year: int, user_id: UUID) -> YearNavigation:
     reasoning = EvidenceChain(
         human_summary="先重建结构，再选择扩张。",
         evidence_chain=[
-            EvidenceSource(source_type="bazi_cycle", title="周期背景", summary="真实大运、流年和流月计算待 bazi-engine 接入。", importance="background"),
+            EvidenceSource(source_type="bazi_cycle", title="周期背景", summary="真实大运、流年和流月已由命盘上下文接口计算；当前年度导航尚未绑定用户命盘。", importance="background"),
             EvidenceSource(source_type="life_chapter", title="当前人生章节", summary="结合用户正在处理的现实章节，而非单独输出吉凶。", importance="primary"),
             EvidenceSource(source_type="current_reality", title="现实约束", summary="年度判断需要用已知计划和现实事件持续验证。", importance="primary"),
         ],

@@ -201,6 +201,13 @@ class AnnualCycleContext(BaseModel):
     end_boundary: BoundaryCandidate
 
 
+class MonthlyCycleContext(BaseModel):
+    sequence_from_lichun: int = Field(ge=1, le=12)
+    pillar: PillarDetails
+    start_boundary: BoundaryCandidate
+    end_boundary: BoundaryCandidate
+
+
 class BaziCurrentContextResult(BaseModel):
     status: Literal["ok", "audit_failed"]
     user_visible: bool
@@ -209,4 +216,5 @@ class BaziCurrentContextResult(BaseModel):
     chart: BaziCalculationResult
     current_luck: CurrentLuckContext
     annual_cycle: AnnualCycleContext
+    monthly_cycle: MonthlyCycleContext
     audit: AuditReport

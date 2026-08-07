@@ -126,6 +126,7 @@ function LuckCycleView({ result, currentContext, contextLoading }: { result: Baz
         <Text style={styles.currentCycleMeta}>{current.current_period.start_at_local.slice(0, 10)} — {current.current_period.end_at_local_exclusive.slice(0, 10)}（出生地时间）</Text>
       </> : current?.status === 'pre_luck' ? <><Text style={styles.currentCycleValue}>尚未起运</Text><Text style={styles.currentCycleMeta}>{current.next_transition_local?.slice(0, 16).replace('T', ' ')} 起进入第 1 运</Text></> : <Text style={styles.currentCycleValue}>当前时刻超出八步大运范围</Text>}
       <View style={styles.annualRow}><View><Text style={styles.factTitle}>当前流年</Text><Text style={styles.annualValue}>{currentContext.annual_cycle.label_year} · {currentContext.annual_cycle.pillar.value}</Text></View><View style={styles.annualBoundary}><Text style={styles.factTitle}>下次流年交接</Text><Text style={styles.annualBoundaryValue}>{formatBeijingInstant(currentContext.annual_cycle.end_boundary.boundary_time_utc)}</Text><Text style={styles.annualBoundaryLabel}>北京时间 · 立春</Text></View></View>
+      <View style={styles.monthlyRow}><View><Text style={styles.factTitle}>当前流月</Text><Text style={styles.annualValue}>{currentContext.monthly_cycle.pillar.value}</Text><Text style={styles.annualBoundaryLabel}>{currentContext.monthly_cycle.start_boundary.name}起 · 第 {currentContext.monthly_cycle.sequence_from_lichun} 月</Text></View><View style={styles.annualBoundary}><Text style={styles.factTitle}>下次流月交接</Text><Text style={styles.annualBoundaryValue}>{formatBeijingInstant(currentContext.monthly_cycle.end_boundary.boundary_time_utc)}</Text><Text style={styles.annualBoundaryLabel}>北京时间 · {currentContext.monthly_cycle.end_boundary.name}</Text></View></View>
     </View> : null}
     {!contextLoading && currentContext && !currentContext.user_visible ? <View style={styles.warningCard}><Text style={styles.warningTitle}>当前周期校验未通过</Text><Text style={styles.warningText}>当前大运与流年已停止展示，原始命盘仍保持不变。</Text></View> : null}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.luckPeriods} nestedScrollEnabled>
@@ -446,6 +447,7 @@ const styles = StyleSheet.create({
   currentCycleMeta: { color: colors.muted, fontSize: 8, marginTop: 5 },
   contextLoadingRow: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 8 },
   annualRow: { borderTopWidth: 1, borderTopColor: 'rgba(199,122,89,0.18)', marginTop: 13, paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  monthlyRow: { borderTopWidth: 1, borderTopColor: 'rgba(199,122,89,0.12)', marginTop: 11, paddingTop: 11, flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
   annualValue: { color: colors.ink, fontSize: 14, fontWeight: '600', marginTop: 6 },
   annualBoundary: { flex: 1, alignItems: 'flex-end' },
   annualBoundaryValue: { color: colors.ink, fontSize: 9, fontWeight: '600', marginTop: 6 },

@@ -55,6 +55,8 @@ def test_bazi_current_context_endpoint_returns_exact_active_cycles() -> None:
     assert body["current_luck"]["current_period"]["pillar"]["value"] == "丙戌"
     assert body["annual_cycle"]["label_year"] == 2026
     assert body["annual_cycle"]["pillar"]["value"] == "丙午"
+    assert body["monthly_cycle"]["pillar"]["value"] == "乙未"
+    assert body["monthly_cycle"]["end_boundary"]["name"] == "立秋"
     assert body["audit"]["status"] == "passed"
 
 

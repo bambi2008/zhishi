@@ -177,6 +177,12 @@ export type BaziCurrentContextResult = {
     start_boundary: { name: string; boundary_time_utc: string; distance_seconds: number; source: string };
     end_boundary: { name: string; boundary_time_utc: string; distance_seconds: number; source: string };
   };
+  monthly_cycle: {
+    sequence_from_lichun: number;
+    pillar: BaziPillar;
+    start_boundary: { name: string; boundary_time_utc: string; distance_seconds: number; source: string };
+    end_boundary: { name: string; boundary_time_utc: string; distance_seconds: number; source: string };
+  };
   audit: {
     status: 'passed' | 'failed';
     primary_engine: string;
