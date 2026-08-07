@@ -69,10 +69,10 @@ def verify(cases: int, seed: int) -> dict:
 
         context_statuses[context.current_luck.status] += 1
         if time_accuracy != "exact" and (
-            context.status != "ambiguous"
-            or context.user_visible
+            context.status != "ok"
+            or not context.user_visible
             or result.luck_cycles is None
-            or result.luck_cycles.user_visible
+            or not result.luck_cycles.user_visible
         ):
             failures.append(
                 {
@@ -81,9 +81,9 @@ def verify(cases: int, seed: int) -> dict:
                     "timezone": timezone_name,
                     "checks": [
                         {
-                            "name": "uncertain_cycle_fail_closed",
+                            "name": "uncertain_cycle_normal_output",
                             "primary": context.status,
-                            "verification": "ambiguous and hidden",
+                            "verification": "ok and visible",
                         }
                     ],
                 }

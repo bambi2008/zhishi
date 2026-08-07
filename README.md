@@ -10,7 +10,7 @@
 - 人生章节时间线
 - 一年导航年度总览、季度节奏、五个领域和月度导航
 - 通用“为什么这么判断？”证据链展开
-- 安全边界说明与本地演示数据
+- 安全边界、出生资料准确性提示与使用条款草案
 - FastAPI API 骨架：Onboarding、Daily、AnxietySession、Journey、Year
 - `zhishi-bazi-core`：时区、历史夏令时、平/真太阳时、精确节气、大运顺逆与起运时间、当前大运、立春流年、十二节流月、三路规则审计
 - 统一 EvidenceChain 结构和高风险安全分流
@@ -38,6 +38,8 @@ python -m uvicorn app.main:app --reload --port 8000
 当前用户与导航数据仍使用内存存储；四柱排盘已接入真实计算引擎，尚未接入真实账户、PostgreSQL 或模型 API。
 
 真实排盘接口：`POST /api/v1/bazi/charts/calculate`；当前大运与流年接口：`POST /api/v1/bazi/context/current`。详细输入、规则和验证方式见 [`services/api/README.md`](services/api/README.md)。
+
+产品上线前的法务与隐私复核草案见 [`LEGAL_NOTICE.md`](LEGAL_NOTICE.md)。该文件用于产品设计，不替代目标运营地区执业律师的正式意见。
 
 移动端：
 

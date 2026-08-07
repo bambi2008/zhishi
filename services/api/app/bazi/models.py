@@ -146,7 +146,7 @@ class LuckPeriod(BaseModel):
 
 
 class LuckCycleResult(BaseModel):
-    status: Literal["ok", "ambiguous", "audit_failed"]
+    status: Literal["ok", "audit_failed"]
     user_visible: bool
     direction: LuckDirection
     direction_basis: str
@@ -209,7 +209,7 @@ class MonthlyCycleContext(BaseModel):
 
 
 class BaziCurrentContextResult(BaseModel):
-    status: Literal["ok", "ambiguous", "audit_failed"]
+    status: Literal["ok", "audit_failed"]
     user_visible: bool
     as_of_utc: datetime
     as_of_local: datetime

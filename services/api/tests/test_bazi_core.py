@@ -267,7 +267,7 @@ def test_current_context_requires_aware_as_of_time() -> None:
         BaziCurrentContextInput(chart=chart, as_of_utc=datetime(2026, 8, 7))
 
 
-def test_uncertain_birth_time_hides_single_luck_and_current_cycle() -> None:
+def test_uncertain_birth_time_keeps_normal_luck_and_current_cycle_visible() -> None:
     chart_input = BaziCalculationInput(
         local_datetime=datetime(2005, 12, 23, 8, 37),
         iana_timezone="Asia/Shanghai",
@@ -286,7 +286,7 @@ def test_uncertain_birth_time_hides_single_luck_and_current_cycle() -> None:
     assert chart.user_visible is True
     assert chart.alternatives
     assert chart.luck_cycles is not None
-    assert chart.luck_cycles.status == "ambiguous"
-    assert chart.luck_cycles.user_visible is False
-    assert context.status == "ambiguous"
-    assert context.user_visible is False
+    assert chart.luck_cycles.status == "ok"
+    assert chart.luck_cycles.user_visible is True
+    assert context.status == "ok"
+    assert context.user_visible is True

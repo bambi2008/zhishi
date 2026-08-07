@@ -118,7 +118,7 @@ function LuckCycleView({ result, currentContext, contextLoading }: { result: Baz
   const luck = result.luck_cycles;
   if (!luck) return null;
   if (!luck.user_visible) {
-    return <View style={styles.warningCard}><Text style={styles.warningTitle}>{luck.status === 'ambiguous' ? '出生时间精度不足，周期暂停展示' : '大运校验未通过'}</Text><Text style={styles.warningText}>{luck.status === 'ambiguous' ? '四柱候选仍可查看；在起运日期和当前周期无法唯一确定前，不展示单一大运、流年或流月。' : '大运结果已停止展示，四柱仍可独立查看。'}</Text></View>;
+    return <View style={styles.warningCard}><Text style={styles.warningTitle}>大运校验未通过</Text><Text style={styles.warningText}>大运结果已停止展示，四柱仍可独立查看。</Text></View>;
   }
   const current = currentContext?.current_luck;
   const activeIndex = current?.current_period?.index;
@@ -359,7 +359,8 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       <Text style={styles.eyebrow}>出生资料</Text><Text style={styles.title}>先把时间算对，再谈解释。</Text><Text style={styles.subtitle}>出生时间按当地钟表填写。系统会处理历史时区、经度、均时差和节气边界。</Text>
       <View style={styles.twoColumns}><Field label="出生日期" value={birthDate} onChangeText={setBirthDate} placeholder="1990-06-15" /><Field label="出生时间" value={birthTime} onChangeText={setBirthTime} placeholder="23:30" /></View>
       <Segmented label="出生时间精度" options={timeAccuracyOptions} value={timeAccuracy} onChange={setTimeAccuracy} />
-      <Text style={styles.ruleHint}>不确定时请如实选择。系统会计算时间区间；若出现多个候选命盘，就暂停单一周期结论。</Text>
+      <Text style={styles.ruleHint}>请按你掌握的情况选择。即使时间不确定，系统仍会按所填时刻正常计算，并提示误差范围内可能出现的候选差异。</Text>
+      {timeAccuracy !== 'exact' ? <View style={styles.inputNoticeCard}><Text style={styles.inputNoticeTitle}>请确认：结果仍按你填写的时刻计算</Text><Text style={styles.inputNoticeText}>实际出生时刻若与填写值有偏差，四柱、大运、流年和流月都可能变化。请结合你掌握的资料理解结果。</Text></View> : null}
       <Field label="出生地" value={locationName} onChangeText={changeLocationName} placeholder="输入城市，例如：上海 / Vancouver" autoCapitalize="none" />
       {locationSearching ? <View style={styles.locationStatus}><ActivityIndicator size="small" color={colors.sage} /><Text style={styles.locationStatusText}>正在识别时区与经纬度…</Text></View> : null}
       {locationResults.length > 0 ? <View style={styles.locationResults}>{locationResults.map(item => <Pressable key={item.provider_id} onPress={() => chooseLocation(item)} style={({ pressed }) => [styles.locationResult, pressed && styles.pressed]}><View style={{ flex: 1 }}><Text style={styles.locationName}>{item.display_name}</Text><Text style={styles.locationMeta}>{item.iana_timezone} · {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}</Text></View><Text style={styles.locationArrow}>→</Text></Pressable>)}<Text style={styles.attribution}>地点数据：Open-Meteo / GeoNames</Text></View> : null}
@@ -372,9 +373,9 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       <Text style={styles.ruleHint}>仅用于“阳年男/阴年女顺，阴年男/阳年女逆”的传统排运规则，不用于判断性别身份。</Text>
       <Segmented label="起运算法" options={luckStartRules} value={luckStartRule} onChange={setLuckStartRule} />
       {error ? <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View> : null}
-      <Pressable disabled={loading} onPress={submit} style={({ pressed }) => [styles.calculateButton, pressed && styles.pressed, loading && styles.disabled]}>{loading ? <ActivityIndicator color="#FFF" /> : <><Text style={styles.calculateText}>{result ? '重新计算' : '开始精确排盘'}</Text><Text style={styles.calculateArrow}>→</Text></>}</Pressable>
+      <Pressable disabled={loading} onPress={submit} style={({ pressed }) => [styles.calculateButton, pressed && styles.pressed, loading && styles.disabled]}>{loading ? <ActivityIndicator color="#FFF" /> : <><Text style={styles.calculateText}>{result ? '重新计算' : '开始排盘'}</Text><Text style={styles.calculateArrow}>→</Text></>}</Pressable>
       {result?.user_visible ? <><ResultView result={result} currentContext={currentContext} contextLoading={contextLoading} /><View style={styles.storageCard}><View style={{ flex: 1 }}><Text style={styles.storageTitle}>{savedAt ? '命盘已保存在本机' : '保存这张命盘'}</Text><Text style={styles.storageText}>{savedAt ? formatSavedAt(savedAt) : '仅在你明确操作后保存；数据不会自动上传账户。'}</Text>{storageMessage ? <Text style={styles.storageMessage}>{storageMessage}</Text> : null}</View><Pressable onPress={savedAt ? clearSavedChart : saveChart} style={styles.storageButton}><Text style={styles.storageButtonText}>{savedAt ? '清除' : '保存'}</Text></Pressable></View></> : null}
-      <Text style={styles.disclaimer}>命盘属于传统文化计算结果，不替代医疗、法律、财务或其他专业判断。</Text>
+      <Text style={styles.disclaimer}>排盘依据你提交的出生日期、时间、地点和规则选项生成。出生时间不准确可能改变结果；非精确时间仍会正常计算。命盘属于传统文化参考，不替代医疗、法律、财务或其他专业判断。详见“安全与使用条款”。</Text>
     </ScrollView>
   </View>;
 }
@@ -403,6 +404,9 @@ const styles = StyleSheet.create({
   input: { minHeight: 44, borderWidth: 1, borderColor: 'rgba(43,48,43,0.16)', borderRadius: 11, paddingHorizontal: 12, color: colors.ink, backgroundColor: colors.card, fontSize: 12 },
   fieldHint: { color: '#989B94', fontSize: 9, lineHeight: 15, marginTop: -6, marginBottom: 15 },
   ruleHint: { color: '#989B94', fontSize: 8, lineHeight: 14, marginTop: -8, marginBottom: 14 },
+  inputNoticeCard: { borderWidth: 1, borderColor: '#E7D3C5', borderRadius: 11, backgroundColor: colors.warning, padding: 12, marginTop: -4, marginBottom: 14 },
+  inputNoticeTitle: { color: colors.terracotta, fontSize: 10, fontWeight: '700' },
+  inputNoticeText: { color: '#816F5E', fontSize: 9, lineHeight: 15, marginTop: 5 },
   locationStatus: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: -4, marginBottom: 12 },
   locationStatusText: { color: colors.muted, fontSize: 9 },
   locationResults: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, backgroundColor: colors.card, overflow: 'hidden', marginTop: -5, marginBottom: 13 },

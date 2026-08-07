@@ -112,7 +112,7 @@ export type BaziCalculationResult = {
     luck_start_rule: LuckStartRule;
   };
   luck_cycles?: {
-    status: 'ok' | 'ambiguous' | 'audit_failed';
+    status: 'ok' | 'audit_failed';
     user_visible: boolean;
     direction: 'forward' | 'reverse';
     direction_basis: string;
@@ -161,7 +161,7 @@ export type LuckPeriod = {
 };
 
 export type BaziCurrentContextResult = {
-  status: 'ok' | 'ambiguous' | 'audit_failed';
+  status: 'ok' | 'audit_failed';
   user_visible: boolean;
   as_of_utc: string;
   as_of_local: string;

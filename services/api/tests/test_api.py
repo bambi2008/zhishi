@@ -78,7 +78,7 @@ def test_bazi_current_context_rejects_naive_as_of_time() -> None:
     assert response.status_code == 422
 
 
-def test_bazi_context_fails_closed_for_approximate_birth_time() -> None:
+def test_bazi_context_calculates_normally_for_approximate_birth_time() -> None:
     response = client.post(
         "/api/v1/bazi/context/current",
         json={
@@ -96,11 +96,11 @@ def test_bazi_context_fails_closed_for_approximate_birth_time() -> None:
     )
     assert response.status_code == 200
     body = response.json()
-    assert body["status"] == "ambiguous"
-    assert body["user_visible"] is False
+    assert body["status"] == "ok"
+    assert body["user_visible"] is True
     assert body["chart"]["user_visible"] is True
-    assert body["chart"]["luck_cycles"]["status"] == "ambiguous"
-    assert body["chart"]["luck_cycles"]["user_visible"] is False
+    assert body["chart"]["luck_cycles"]["status"] == "ok"
+    assert body["chart"]["luck_cycles"]["user_visible"] is True
 
 
 def test_location_search_returns_calculation_ready_fields(monkeypatch) -> None:
