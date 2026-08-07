@@ -1,0 +1,145 @@
+{
+  "schema_version": 1,
+  "dataset": "2026 minor solar terms used as Bazi month boundaries",
+  "official_source": {
+    "publisher": "Hong Kong Observatory",
+    "title": "Date and Time of the 24 Solar Terms",
+    "url": "https://www.hko.gov.hk/en/gts/astronomy/Solar_Term.htm",
+    "upstream_astronomical_sources": [
+      "HM Nautical Almanac Office, United Kingdom",
+      "United States Naval Observatory"
+    ],
+    "timezone": "Asia/Hong_Kong",
+    "precision": "minute",
+    "retrieved_on": "2026-08-07"
+  },
+  "engine_baseline": {
+    "primary": "lunar_python@1.4.8",
+    "verification": "sxtwl@2.0.7",
+    "official_minute_tolerance_seconds": 30,
+    "cross_engine_tolerance_seconds": 90,
+    "note": "Exact seconds are a reviewed dual-engine baseline. Any future change must be investigated against the official minute before updating this fixture."
+  },
+  "terms": [
+    {
+      "name_zh": "小寒",
+      "name_en": "Moderate cold",
+      "official_hkt": "2026-01-05T16:23:00+08:00",
+      "engine_boundary_utc": "2026-01-05T08:23:10+00:00",
+      "month_pillar_before": "戊子",
+      "month_pillar_after": "己丑",
+      "annual_pillar_before": "乙巳",
+      "annual_pillar_after": "乙巳"
+    },
+    {
+      "name_zh": "立春",
+      "name_en": "Spring commences",
+      "official_hkt": "2026-02-04T04:02:00+08:00",
+      "engine_boundary_utc": "2026-02-03T20:02:08+00:00",
+      "month_pillar_before": "己丑",
+      "month_pillar_after": "庚寅",
+      "annual_pillar_before": "乙巳",
+      "annual_pillar_after": "丙午"
+    },
+    {
+      "name_zh": "惊蛰",
+      "name_en": "Insects waken",
+      "official_hkt": "2026-03-05T21:59:00+08:00",
+      "engine_boundary_utc": "2026-03-05T13:59:00+00:00",
+      "month_pillar_before": "庚寅",
+      "month_pillar_after": "辛卯",
+      "annual_pillar_before": "丙午",
+      "annual_pillar_after": "丙午"
+    },
+    {
+      "name_zh": "清明",
+      "name_en": "Bright and clear",
+      "official_hkt": "2026-04-05T02:40:00+08:00",
+      "engine_boundary_utc": "2026-04-04T18:40:00+00:00",
+      "month_pillar_before": "辛卯",
+      "month_pillar_after": "壬辰",
+      "annual_pillar_before": "丙午",
+      "annual_pillar_after": "丙午"
+    },
+    {
+      "name_zh": "立夏",
+      "name_en": "Summer commences",
+      "official_hkt": "2026-05-05T19:49:00+08:00",
+      "engine_boundary_utc": "2026-05-05T11:48:44+00:00",
+      "month_pillar_before": "壬辰",
+      "month_pillar_after": "癸巳",
+      "annual_pillar_before": "丙午",
+      "annual_pillar_after": "丙午"
+    },
+    {
+      "name_zh": "芒种",
+      "name_en": "Corn on ear",
+      "official_hkt": "2026-06-05T23:48:00+08:00",
+      "engine_boundary_utc": "2026-06-05T15:48:21+00:00",
+      "month_pillar_before": "癸巳",
+      "month_pillar_after": "甲午",
+      "annual_pillar_before": "丙午",
+      "annual_pillar_after": "丙午"
+    },
+    {
+      "name_zh": "小暑",
+      "name_en": "Moderate heat",
+      "official_hkt": "2026-07-07T09:57:00+08:00",
+      "engine_boundary_utc": "2026-07-07T01:56:57+00:00",
+      "month_pillar_before": "甲午",
+      "month_pillar_after": "乙未",
+      "annual_pillar_before": "丙午",
+      "annual_pillar_after": "丙午"
+    },
+    {
+      "name_zh": "立秋",
+      "name_en": "Autumn commences",
+      "official_hkt": "2026-08-07T19:43:00+08:00",
+      "engine_boundary_utc": "2026-08-07T11:42:43+00:00",
+      "month_pillar_before": "乙未",
+      "month_pillar_after": "丙申",
+      "annual_pillar_before": "丙午",
+      "annual_pillar_after": "丙午"
+    },
+    {
+      "name_zh": "白露",
+      "name_en": "White dew",
+      "official_hkt": "2026-09-07T22:41:00+08:00",
+      "engine_boundary_utc": "2026-09-07T14:41:16+00:00",
+      "month_pillar_before": "丙申",
+      "month_pillar_after": "丁酉",
+      "annual_pillar_before": "丙午",
+      "annual_pillar_after": "丙午"
+    },
+    {
+      "name_zh": "寒露",
+      "name_en": "Cold dew",
+      "official_hkt": "2026-10-08T14:29:00+08:00",
+      "engine_boundary_utc": "2026-10-08T06:29:17+00:00",
+      "month_pillar_before": "丁酉",
+      "month_pillar_after": "戊戌",
+      "annual_pillar_before": "丙午",
+      "annual_pillar_after": "丙午"
+    },
+    {
+      "name_zh": "立冬",
+      "name_en": "Winter commences",
+      "official_hkt": "2026-11-07T17:52:00+08:00",
+      "engine_boundary_utc": "2026-11-07T09:52:05+00:00",
+      "month_pillar_before": "戊戌",
+      "month_pillar_after": "己亥",
+      "annual_pillar_before": "丙午",
+      "annual_pillar_after": "丙午"
+    },
+    {
+      "name_zh": "大雪",
+      "name_en": "Heavy snow",
+      "official_hkt": "2026-12-07T10:53:00+08:00",
+      "engine_boundary_utc": "2026-12-07T02:52:32+00:00",
+      "month_pillar_before": "己亥",
+      "month_pillar_after": "庚子",
+      "annual_pillar_before": "丙午",
+      "annual_pillar_after": "丙午"
+    }
+  ]
+}
