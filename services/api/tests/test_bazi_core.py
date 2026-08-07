@@ -105,36 +105,85 @@ def test_late_zi_rule_is_explicit_and_changes_only_when_selected() -> None:
     assert midnight.pillars.hour.value == late_zi.pillars.hour.value == "戊子"
 
 
-def test_nonexistent_dst_time_is_rejected() -> None:
+@pytest.mark.parametrize(
+    ("timezone_name", "longitude", "wall_time"),
+    [
+        ("America/New_York", -74.006, datetime(2024, 3, 10, 2, 30)),
+        ("Europe/London", -0.1276, datetime(2024, 3, 31, 1, 30)),
+        ("Australia/Sydney", 151.2093, datetime(2024, 10, 6, 2, 30)),
+    ],
+)
+def test_nonexistent_dst_time_is_rejected(
+    timezone_name: str, longitude: float, wall_time: datetime
+) -> None:
     with pytest.raises(TimeNormalizationError) as exc:
         normalize_birth_time(
-            datetime(2024, 3, 10, 2, 30),
-            "America/New_York",
-            -74.006,
+            wall_time,
+            timezone_name,
+            longitude,
             "civil",
             None,
         )
     assert exc.value.code == "nonexistent_local_time"
 
 
-def test_ambiguous_dst_time_requires_fold() -> None:
+@pytest.mark.parametrize(
+    ("timezone_name", "longitude", "wall_time"),
+    [
+        ("America/New_York", -74.006, datetime(2024, 11, 3, 1, 30)),
+        ("Europe/London", -0.1276, datetime(2024, 10, 27, 1, 30)),
+        ("Australia/Sydney", 151.2093, datetime(2024, 4, 7, 2, 30)),
+    ],
+)
+def test_ambiguous_dst_time_requires_fold(
+    timezone_name: str, longitude: float, wall_time: datetime
+) -> None:
     with pytest.raises(TimeNormalizationError) as exc:
         normalize_birth_time(
-            datetime(2024, 11, 3, 1, 30),
-            "America/New_York",
-            -74.006,
+            wall_time,
+            timezone_name,
+            longitude,
             "civil",
             None,
         )
     assert exc.value.code == "ambiguous_local_time"
 
     first = normalize_birth_time(
-        datetime(2024, 11, 3, 1, 30), "America/New_York", -74.006, "civil", 0
+        wall_time, timezone_name, longitude, "civil", 0
     )
     second = normalize_birth_time(
-        datetime(2024, 11, 3, 1, 30), "America/New_York", -74.006, "civil", 1
+        wall_time, timezone_name, longitude, "civil", 1
     )
     assert (second.utc - first.utc).total_seconds() == 3600
+
+
+@pytest.mark.parametrize(
+    ("timezone_name", "longitude", "wall_time"),
+    [
+        ("America/New_York", -74.006, datetime(2024, 3, 10, 3, 0)),
+        ("Europe/London", -0.1276, datetime(2024, 3, 31, 2, 0)),
+        ("Australia/Sydney", 151.2093, datetime(2024, 10, 6, 3, 0)),
+    ],
+)
+def test_uncertain_interval_touching_dst_remains_visible_with_warning(
+    timezone_name: str, longitude: float, wall_time: datetime
+) -> None:
+    result = calculate(
+        local_datetime=wall_time,
+        iana_timezone=timezone_name,
+        longitude=longitude,
+        gender="male",
+        time_accuracy="approximate",
+        uncertainty_minutes=60,
+    )
+
+    assert result.status == "ambiguous"
+    assert result.user_visible is True
+    assert result.boundary.risk == "ambiguous"
+    assert any("夏令时" in note and "正常计算" in note for note in result.boundary.notes)
+    assert result.audit.status == "passed"
+    assert result.luck_cycles is not None
+    assert result.luck_cycles.user_visible is True
 
 
 def test_calculation_hash_is_deterministic() -> None:

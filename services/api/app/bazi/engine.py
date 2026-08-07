@@ -287,6 +287,7 @@ def _build_boundary_report(
     uncertainty_seconds = int((payload.uncertainty_minutes or 0) * 60)
     alternatives: list[AlternativeChart] = []
     notes: list[str] = []
+    interval_has_time_anomaly = False
 
     if uncertainty_seconds:
         delta = timedelta(seconds=uncertainty_seconds)
@@ -301,7 +302,8 @@ def _build_boundary_report(
             if len(endpoint_values) > 1:
                 alternatives = [earliest, latest]
         except TimeNormalizationError as exc:
-            notes.append(f"时间误差区间触及夏令时异常：{exc}")
+            interval_has_time_anomaly = True
+            notes.append(f"时间误差区间触及夏令时跳时或重复时段：{exc}；结果仍按所填主时刻正常计算")
 
     crosses_jie = any(
         (item.year, item.month) != (main_values["year"], main_values["month"]) for item in alternatives
@@ -315,7 +317,7 @@ def _build_boundary_report(
     if crosses_hour:
         notes.append("出生时间误差范围跨越时辰边界，时柱存在备选结果")
 
-    if alternatives:
+    if interval_has_time_anomaly or alternatives:
         risk = "ambiguous"
     elif abs(nearest.distance_seconds) <= 300:
         risk = "near_boundary"
@@ -368,7 +370,7 @@ def calculate_chart(payload: BaziCalculationInput) -> BaziCalculationResult:
         if payload.gender is not None or payload.luck_direction_override is not None
         else None
     )
-    status = "audit_failed" if audit.status == "failed" else "ambiguous" if alternatives else "ok"
+    status = "audit_failed" if audit.status == "failed" else "ambiguous" if boundary.risk == "ambiguous" else "ok"
     result = BaziCalculationResult(
         status=status,
         user_visible=audit.status == "passed",
