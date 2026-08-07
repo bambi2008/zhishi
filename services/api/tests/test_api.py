@@ -82,6 +82,26 @@ def test_bazi_current_context_rejects_naive_as_of_time() -> None:
     assert response.status_code == 422
 
 
+def test_ambiguous_dst_time_returns_recoverable_code_and_accepts_explicit_fold() -> None:
+    payload = {
+        "local_datetime": "2024-11-03T01:30:00",
+        "iana_timezone": "America/New_York",
+        "longitude": -74.006,
+        "solar_time_mode": "civil",
+        "day_boundary_rule": "midnight",
+    }
+
+    ambiguous = client.post("/api/v1/bazi/charts/calculate", json=payload)
+    assert ambiguous.status_code == 422
+    assert ambiguous.json()["detail"]["code"] == "ambiguous_local_time"
+
+    first = client.post("/api/v1/bazi/charts/calculate", json={**payload, "dst_fold": 0})
+    second = client.post("/api/v1/bazi/charts/calculate", json={**payload, "dst_fold": 1})
+    assert first.status_code == second.status_code == 200
+    assert first.json()["normalized_times"]["utc_time"] != second.json()["normalized_times"]["utc_time"]
+    assert first.json()["calculation_hash"] != second.json()["calculation_hash"]
+
+
 def test_bazi_context_calculates_normally_for_approximate_birth_time() -> None:
     response = client.post(
         "/api/v1/bazi/context/current",

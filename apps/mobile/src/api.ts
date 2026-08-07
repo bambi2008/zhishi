@@ -6,6 +6,18 @@ export type ApiHealth = {
   version: string;
 };
 
+export class ZhishiApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'ZhishiApiError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
 export type SolarTimeMode = 'civil' | 'mean_solar' | 'apparent_solar';
 export type DayBoundaryRule = 'midnight' | 'late_zi_next_day';
 export type BaziGender = 'male' | 'female';
@@ -204,9 +216,16 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const body = await response.json().catch(() => null) as { detail?: string | { message?: string } } | null;
-    const detail = typeof body?.detail === 'string' ? body.detail : body?.detail?.message;
-    throw new Error(detail ?? `知时 API 请求失败：${response.status}`);
+    const body = await response.json().catch(() => null) as {
+      detail?: string | { code?: string; message?: string };
+    } | null;
+    const structuredDetail = typeof body?.detail === 'object' ? body.detail : undefined;
+    const detail = typeof body?.detail === 'string' ? body.detail : structuredDetail?.message;
+    throw new ZhishiApiError(
+      detail ?? `知时 API 请求失败：${response.status}`,
+      response.status,
+      structuredDetail?.code,
+    );
   }
 
   return response.json() as Promise<T>;

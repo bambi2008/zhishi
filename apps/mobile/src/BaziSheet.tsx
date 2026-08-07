@@ -19,6 +19,7 @@ import {
   LocationSearchResult,
   LuckStartRule,
   SolarTimeMode,
+  ZhishiApiError,
   calculateBaziCurrentContext,
   searchBirthLocations,
 } from './api';
@@ -66,6 +67,11 @@ const timeAccuracyOptions: Array<[BaziTimeAccuracy, string]> = [
   ['exact', '精确'],
   ['approximate', '约 ±30 分'],
   ['hour_only', '约 ±60 分'],
+];
+
+const dstFoldOptions: Array<[0 | 1, string]> = [
+  [0, '第一次出现'],
+  [1, '第二次出现'],
 ];
 
 function validLocalDateTime(date: string, time: string): boolean {
@@ -188,6 +194,8 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
   const [gender, setGender] = useState<BaziGender | ''>('');
   const [luckStartRule, setLuckStartRule] = useState<LuckStartRule>('precise_minutes');
   const [timeAccuracy, setTimeAccuracy] = useState<BaziTimeAccuracy>('exact');
+  const [dstFold, setDstFold] = useState<0 | 1 | undefined>(undefined);
+  const [dstFoldRequired, setDstFoldRequired] = useState(false);
   const [result, setResult] = useState<BaziCalculationResult | null>(null);
   const [currentContext, setCurrentContext] = useState<BaziCurrentContextResult | null>(null);
   const [contextLoading, setContextLoading] = useState(false);
@@ -196,6 +204,26 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
   const [storageMessage, setStorageMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const resetDstFold = () => {
+    setDstFold(undefined);
+    setDstFoldRequired(false);
+  };
+
+  const changeBirthDate = (value: string) => {
+    setBirthDate(value);
+    resetDstFold();
+  };
+
+  const changeBirthTime = (value: string) => {
+    setBirthTime(value);
+    resetDstFold();
+  };
+
+  const changeTimezone = (value: string) => {
+    setTimezone(value);
+    resetDstFold();
+  };
 
   useEffect(() => {
     let active = true;
@@ -214,6 +242,8 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       setGender(stored.input.gender ?? '');
       setLuckStartRule(stored.input.luck_start_rule ?? 'precise_minutes');
       setTimeAccuracy(stored.input.time_accuracy ?? 'exact');
+      setDstFold(stored.input.dst_fold);
+      setDstFoldRequired(false);
       setLastInput(stored.input);
       setResult(stored.result);
       setSavedAt(stored.saved_at);
@@ -275,6 +305,8 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
     setTimezone(item.iana_timezone);
     setLongitude(String(item.longitude));
     setLatitude(item.latitude);
+    setDstFold(undefined);
+    setDstFoldRequired(false);
     setLocationResults([]);
     setLocationMessage(`已识别 ${item.iana_timezone} · 经度 ${item.longitude.toFixed(4)}°`);
   };
@@ -298,6 +330,10 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       setError('请选择传统排运性别；该字段只用于计算大运顺逆。');
       return;
     }
+    if (dstFoldRequired && dstFold === undefined) {
+      setError('请选择这个重复钟表时间是第一次出现还是第二次出现。');
+      return;
+    }
 
     setLoading(true);
     setContextLoading(true);
@@ -311,6 +347,7 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
         gender,
         luck_start_rule: luckStartRule,
         time_accuracy: timeAccuracy,
+        dst_fold: dstFold,
         solar_time_mode: solarMode,
         day_boundary_rule: dayRule,
       };
@@ -321,11 +358,17 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       setCurrentContext(context);
       setSavedAt(null);
       setStorageMessage('');
+      setDstFoldRequired(false);
       if (!chart.user_visible) setError('双引擎校验未通过，本次结果已停止展示。');
     } catch (requestError) {
       setResult(null);
       setCurrentContext(null);
-      setError(requestError instanceof Error ? requestError.message : '排盘失败，请稍后重试。');
+      if (requestError instanceof ZhishiApiError && requestError.code === 'ambiguous_local_time') {
+        setDstFoldRequired(true);
+        setError('这个出生地钟表时间因夏令时结束出现了两次。请选择第一次或第二次后重新排盘；系统不会替你猜。');
+      } else {
+        setError(requestError instanceof Error ? requestError.message : '排盘失败，请稍后重试。');
+      }
     } finally {
       setLoading(false);
       setContextLoading(false);
@@ -357,7 +400,7 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
     <View style={styles.sheetHeader}><View><Text style={styles.sheetHeaderTitle}>我的命盘</Text><Text style={styles.sheetHeaderMeta}>真实历法 · 可追溯计算</Text></View><Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="关闭命盘"><Text style={styles.closeText}>×</Text></Pressable></View>
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.eyebrow}>出生资料</Text><Text style={styles.title}>先把时间算对，再谈解释。</Text><Text style={styles.subtitle}>出生时间按当地钟表填写。系统会处理历史时区、经度、均时差和节气边界。</Text>
-      <View style={styles.twoColumns}><Field label="出生日期" value={birthDate} onChangeText={setBirthDate} placeholder="1990-06-15" /><Field label="出生时间" value={birthTime} onChangeText={setBirthTime} placeholder="23:30" /></View>
+      <View style={styles.twoColumns}><Field label="出生日期" value={birthDate} onChangeText={changeBirthDate} placeholder="1990-06-15" /><Field label="出生时间" value={birthTime} onChangeText={changeBirthTime} placeholder="23:30" /></View>
       <Segmented label="出生时间精度" options={timeAccuracyOptions} value={timeAccuracy} onChange={setTimeAccuracy} />
       <Text style={styles.ruleHint}>请按你掌握的情况选择。即使时间不确定，系统仍会按所填时刻正常计算，并提示误差范围内可能出现的候选差异。</Text>
       {timeAccuracy !== 'exact' ? <View style={styles.inputNoticeCard}><Text style={styles.inputNoticeTitle}>请确认：结果仍按你填写的时刻计算</Text><Text style={styles.inputNoticeText}>实际出生时刻若与填写值有偏差，四柱、大运、流年和流月都可能变化。请结合你掌握的资料理解结果。</Text></View> : null}
@@ -365,8 +408,9 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       {locationSearching ? <View style={styles.locationStatus}><ActivityIndicator size="small" color={colors.sage} /><Text style={styles.locationStatusText}>正在识别时区与经纬度…</Text></View> : null}
       {locationResults.length > 0 ? <View style={styles.locationResults}>{locationResults.map(item => <Pressable key={item.provider_id} onPress={() => chooseLocation(item)} style={({ pressed }) => [styles.locationResult, pressed && styles.pressed]}><View style={{ flex: 1 }}><Text style={styles.locationName}>{item.display_name}</Text><Text style={styles.locationMeta}>{item.iana_timezone} · {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}</Text></View><Text style={styles.locationArrow}>→</Text></Pressable>)}<Text style={styles.attribution}>地点数据：Open-Meteo / GeoNames</Text></View> : null}
       {locationMessage ? <Text style={styles.locationMessage}>{locationMessage}</Text> : null}
-      <View style={styles.twoColumns}><Field label="IANA 时区" value={timezone} onChangeText={setTimezone} placeholder="Asia/Shanghai" autoCapitalize="none" /><Field label="出生地经度" value={longitude} onChangeText={setLongitude} placeholder="121.4737" autoCapitalize="none" /></View>
+      <View style={styles.twoColumns}><Field label="IANA 时区" value={timezone} onChangeText={changeTimezone} placeholder="Asia/Shanghai" autoCapitalize="none" /><Field label="出生地经度" value={longitude} onChangeText={setLongitude} placeholder="121.4737" autoCapitalize="none" /></View>
       <Text style={styles.fieldHint}>选择搜索结果后自动填写；也可手动修改。东经为正，西经为负。</Text>
+      {dstFoldRequired || dstFold !== undefined ? <View style={styles.dstFoldCard}><Text style={styles.dstFoldTitle}>这个钟表时间出现了两次</Text><Text style={styles.dstFoldText}>夏令时结束时，同一个当地时间可能对应两个真实时刻。请根据出生记录选择；第一次对应较早的绝对时刻，第二次对应较晚的绝对时刻。</Text><View style={styles.segmentRow}>{dstFoldOptions.map(([value, label]) => <Pressable key={value} onPress={() => { setDstFold(value); setError(''); }} style={[styles.segment, dstFold === value && styles.segmentActive]}><Text style={[styles.segmentText, dstFold === value && styles.segmentTextActive]}>{label}</Text></Pressable>)}</View>{dstFold !== undefined ? <Text style={styles.dstFoldSelected}>已选择{dstFold === 0 ? '第一次' : '第二次'}；可重新排盘或切换选择。</Text> : null}</View> : null}
       <Segmented label="时间模式" options={solarModes} value={solarMode} onChange={setSolarMode} />
       <Segmented label="换日规则" options={dayRules} value={dayRule} onChange={setDayRule} />
       <Segmented label="传统排运性别" options={genderOptions} value={gender} onChange={setGender} />
@@ -408,6 +452,10 @@ const styles = StyleSheet.create({
   inputNoticeCard: { borderWidth: 1, borderColor: '#E7D3C5', borderRadius: 11, backgroundColor: colors.warning, padding: 12, marginTop: -4, marginBottom: 14 },
   inputNoticeTitle: { color: colors.terracotta, fontSize: 10, fontWeight: '700' },
   inputNoticeText: { color: '#816F5E', fontSize: 9, lineHeight: 15, marginTop: 5 },
+  dstFoldCard: { borderWidth: 1, borderColor: '#D8B897', borderRadius: 11, backgroundColor: '#FFF7EC', padding: 12, marginBottom: 15 },
+  dstFoldTitle: { color: colors.terracotta, fontSize: 11, fontWeight: '700' },
+  dstFoldText: { color: '#816F5E', fontSize: 9, lineHeight: 15, marginTop: 5, marginBottom: 10 },
+  dstFoldSelected: { color: colors.sage, fontSize: 9, lineHeight: 14, marginTop: 8 },
   locationStatus: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: -4, marginBottom: 12 },
   locationStatusText: { color: colors.muted, fontSize: 9 },
   locationResults: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, backgroundColor: colors.card, overflow: 'hidden', marginTop: -5, marginBottom: 13 },
