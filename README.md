@@ -12,7 +12,7 @@
 - 通用“为什么这么判断？”证据链展开
 - 安全边界、出生资料准确性提示与使用条款草案
 - FastAPI API 骨架：Onboarding、Daily、AnxietySession、Journey、Year
-- `zhishi-bazi-core`：时区、历史夏令时、平/真太阳时、精确节气、大运顺逆与起运时间、当前大运、立春流年、十二节流月、三路规则审计
+- `zhishi-bazi-core`：时区、历史夏令时、平/真太阳时、精确节气、大运顺逆与起运时间、当前大运、立春流年、十二节流月、三路规则审计，以及 NOAA/HKO 官方黄金基准
 - 统一 EvidenceChain 结构和高风险安全分流
 - React Native 移动端：Daily / Journey / Year、出生地自动解析、真实出生资料表单、四柱/当前周期审计展示和用户主动本机保存
 

@@ -86,7 +86,10 @@ def localize_wall_time(local_naive: datetime, timezone_name: str, dst_fold: int 
 
 
 def julian_day(utc_time: datetime) -> float:
-    return utc_time.timestamp() / 86400.0 + 2440587.5
+    if utc_time.tzinfo is None or utc_time.utcoffset() is None:
+        raise ValueError("equation-of-time input must be timezone-aware")
+    normalized_utc = utc_time.astimezone(UTC)
+    return normalized_utc.timestamp() / 86400.0 + 2440587.5
 
 
 def equation_of_time_minutes(utc_time: datetime) -> float:
