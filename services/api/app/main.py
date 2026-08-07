@@ -29,8 +29,6 @@ from .models import (
     LifeChapterInput,
     OnboardingInput,
     UserProfile,
-    YearClaim,
-    YearNavigation,
 )
 from .store import store
 
@@ -227,33 +225,16 @@ def list_life_chapters(user_id: UUID) -> list[LifeChapter]:
     return store.chapters.get(user_id, [])
 
 
-@app.post("/api/v1/year-navigation/{year}", response_model=YearNavigation)
-def create_year_navigation(year: int, user_id: UUID) -> YearNavigation:
+@app.post("/api/v1/year-navigation/{year}", status_code=501)
+def create_year_navigation(year: int, user_id: UUID) -> None:
     get_user(user_id)
-    existing = store.years.get((user_id, year))
-    if existing:
-        return existing
-    reasoning = EvidenceChain(
-        human_summary="先重建结构，再选择扩张。",
-        evidence_chain=[
-            EvidenceSource(source_type="bazi_cycle", title="周期背景", summary="真实大运、流年和流月已由命盘上下文接口计算；当前年度导航尚未绑定用户命盘。", importance="background"),
-            EvidenceSource(source_type="life_chapter", title="当前人生章节", summary="结合用户正在处理的现实章节，而非单独输出吉凶。", importance="primary"),
-            EvidenceSource(source_type="current_reality", title="现实约束", summary="年度判断需要用已知计划和现实事件持续验证。", importance="primary"),
-        ],
-        synthesis="年度导航输出预测和验证点，不把预测包装成确定事实。",
-        confidence="low", limitations=["当前为 Year API 骨架，尚未有真实年度事件数据。"],
+    raise HTTPException(
+        status_code=501,
+        detail={
+            "code": "year_navigation_requires_chart_context",
+            "message": (
+                f"{year} 年解释层尚未绑定已审计命盘；"
+                "请使用 /api/v1/bazi/context/current 获取真实流年、流月与大运边界。"
+            ),
+        },
     )
-    navigation = YearNavigation(
-        user_id=user_id, year=year, annual_theme="重建结构，再选择扩张",
-        annual_summary="上半年整理资源与验证方向，下半年把成熟选择转为行动。",
-        focus_areas=["career", "self"],
-        quarters=[
-            {"quarter": 1, "status": "整理", "summary": "把分散的责任和资源重新归位。"},
-            {"quarter": 2, "status": "试探", "summary": "小范围验证方向，而不是立刻转身。"},
-            {"quarter": 3, "status": "转折", "summary": "将已确认的选择变成可逆的行动。"},
-            {"quarter": 4, "status": "收尾", "summary": "复盘真正有效的变化。"},
-        ], months=[],
-        claims=[YearClaim(human_summary="今年更适合先验证结构，再逐步扩张。", evidence_chain=reasoning, confidence="low")],
-    )
-    store.years[(user_id, year)] = navigation
-    return navigation

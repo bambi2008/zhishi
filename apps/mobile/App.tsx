@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
+  ActivityIndicator,
   Modal,
   Pressable,
   SafeAreaView,
@@ -11,7 +12,8 @@ import {
   View,
 } from 'react-native';
 import { BaziSheet } from './src/BaziSheet';
-import { getApiHealth } from './src/api';
+import { BaziCurrentContextResult, calculateBaziCurrentContext, getApiHealth } from './src/api';
+import { loadStoredBaziChart } from './src/chartStorage';
 
 type ViewKey = 'daily' | 'journey' | 'year';
 type ModalKey = 'clarity' | 'status' | 'safety' | 'profile' | 'bazi' | null;
@@ -47,15 +49,6 @@ const evidenceCopy = {
       ['历史反馈', '此前收集事实后，清晰度平均上升。'],
     ],
     summary: '这是一个 15 分钟内可验证、不会锁死后续选择的小动作。',
-  },
-  year: {
-    title: '为什么这么判断？',
-    sources: [
-      ['年度背景', '年度主线是先重建结构，再选择扩张。'],
-      ['当前章节', '工作章节正在验证替代路径的真实性。'],
-      ['现实计划', '接下来适合进行一次低风险、可逆的外部试探。'],
-    ],
-    summary: 'Q3 的重点不是必须改变，而是让成熟判断进入一次可逆试行。',
   },
 } as const;
 
@@ -129,14 +122,88 @@ function TimelineItem({ state, label, title, text, action }: { state: 'done' | '
   return <View style={styles.timelineItem}><View style={[styles.timelineDot, state === 'active' && styles.timelineDotActive]} /><View style={styles.timelineContent}><Text style={styles.timelineLabel}>{label}</Text><Text style={styles.timelineTitle}>{title}</Text>{text ? <Text style={styles.timelineText}>{text}</Text> : null}{action ? <Pressable style={styles.smallButton}><Text style={styles.smallButtonText}>{action} →</Text></Pressable> : null}</View></View>;
 }
 
-function YearScreen() {
+function formatCycleBoundary(value: string, timezone: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  try {
+    return `${new Intl.DateTimeFormat('zh-CN', {
+      timeZone: timezone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).format(date)} · ${timezone}`;
+  } catch {
+    return `${date.toISOString().replace('T', ' ').slice(0, 16)} UTC`;
+  }
+}
+
+function YearScreen({ onBazi, revision }: { onBazi: () => void; revision: number }) {
+  const [loading, setLoading] = useState(true);
+  const [context, setContext] = useState<BaziCurrentContextResult | null>(null);
+  const [timezone, setTimezone] = useState('UTC');
+  const [savedAt, setSavedAt] = useState('');
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setError('');
+    loadStoredBaziChart()
+      .then(stored => {
+        if (!active) return null;
+        if (!stored) {
+          setContext(null);
+          setSavedAt('');
+          return null;
+        }
+        setTimezone(stored.input.iana_timezone);
+        setSavedAt(stored.saved_at);
+        return calculateBaziCurrentContext(stored.input);
+      })
+      .then(result => {
+        if (active && result) setContext(result);
+      })
+      .catch(requestError => {
+        if (!active) return;
+        setContext(null);
+        setError(requestError instanceof Error ? requestError.message : '年度周期读取失败，请稍后重试。');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [revision]);
+
+  const annual = context?.annual_cycle;
+  const monthly = context?.monthly_cycle;
+  const luck = context?.current_luck;
+
   return <View>
-    <View style={styles.heading}><Text style={styles.eyebrow}>YEAR · 一年导航</Text><Text style={styles.pageTitle}>重建结构，再选择扩张。</Text><Text style={styles.pageSubtitle}>这是一个预测 + 验证的年度视角，会随现实事件更新。</Text></View>
-    <View style={[styles.card, styles.yearHero]}><Kicker label="年度总览 · 2026" color={colors.terracotta} /><Text style={styles.yearTitle}>不必迅速证明自己，先把可持续的结构搭起来。</Text><Text style={styles.bodyText}>上半年更适合整理资源与验证方向，下半年把成熟选择转为行动。</Text><View style={styles.tagRow}>{['整理', '验证', '渐进扩张'].map(tag => <Text key={tag} style={styles.tag}>{tag}</Text>)}</View><View style={styles.yearCore}><Text style={styles.yearCoreNumber}>2026</Text><Text style={styles.yearCoreLabel}>年度导航</Text></View></View>
-    <View style={styles.sectionHeading}><View><Kicker label="四季度节奏" color={colors.gold} /><Text style={styles.sectionTitle}>现在先看 Q3 的转折感</Text></View><Text style={styles.textButton}>版本变化 ↗</Text></View>
-    <View style={styles.quarterGrid}>{[['Q1', '整理', '把资源重新归位。'], ['Q2', '试探', '小范围验证方向。'], ['Q3', '转折', '把成熟选择变成行动。'], ['Q4', '收尾', '复盘真正有效的变化。']].map(([quarter, title, summary], i) => <View key={quarter} style={[styles.quarterCard, i === 2 && styles.quarterActive]}><Text style={styles.timelineLabel}>{quarter} · {i < 2 ? '已完成' : i === 2 ? '进行中' : '待进入'}</Text><Text style={styles.quarterTitle}>{title}</Text><Text style={styles.quarterText}>{summary}</Text><View style={[styles.quarterLine, i < 2 && styles.quarterLineDone, i === 2 && styles.quarterLineActive]} /></View>)}</View>
-    <View style={styles.domainGrid}>{[['↗', '事业', '先验证，再换轨'], ['⌁', '财务', '守住现金流边界'], ['♡', '关系', '让边界说得更早'], ['○', '健康', '恢复是基础设施'], ['✦', '自我', '从证明转向选择']].map(([icon, label, title]) => <View key={label} style={styles.domainCard}><Text style={styles.domainIcon}>{icon}</Text><Text style={styles.domainLabel}>{label}</Text><Text style={styles.domainTitle}>{title}</Text></View>)}</View>
-    <View style={[styles.card, styles.monthCard]}><Kicker label="月度导航" color="#BC8C91" /><Text style={styles.sectionTitle}>接下来三个月</Text><View style={styles.monthRow}>{[['08', '收集'], ['09', '试行'], ['10', '确认']].map(([month, title], i) => <View key={month} style={[styles.monthItem, i === 1 && styles.monthItemActive]}><Text style={styles.monthNumber}>{month}</Text><Text style={styles.monthTitle}>{title}</Text><Text style={styles.monthText}>{i === 0 ? '把事实收齐' : i === 1 ? '做一次可逆尝试' : '看行动后的反馈'}</Text></View>)}</View><EvidenceRow kind="year" /></View>
+    <View style={styles.heading}><Text style={styles.eyebrow}>YEAR · 精确周期</Text><Text style={styles.pageTitle}>先展示算得准的部分。</Text><Text style={styles.pageSubtitle}>年度页只显示命盘绑定、边界可追溯且审计通过的历法结果。解释层未达标前不会用套话补位。</Text></View>
+    {loading ? <View style={[styles.card, styles.yearLoadingCard]}><ActivityIndicator color={colors.sageDeep} /><Text style={styles.yearLoadingText}>正在按已保存命盘定位当前周期…</Text></View> : null}
+    {!loading && !context && !error ? <View style={[styles.card, styles.yearEmptyCard]}><Kicker label="需要一张已保存命盘" color={colors.terracotta} /><Text style={styles.yearEmptyTitle}>年度导航不能脱离出生资料生成。</Text><Text style={styles.yearEmptyText}>建立命盘并主动保存后，这里才会读取真实流年、流月和大运边界。命盘只保存在本机。</Text><PrimaryButton label="建立并保存命盘" onPress={onBazi} /></View> : null}
+    {!loading && error ? <View style={[styles.card, styles.yearErrorCard]}><Kicker label="暂时无法计算" color={colors.terracotta} /><Text style={styles.yearEmptyTitle}>年度周期没有通过读取。</Text><Text style={styles.yearEmptyText}>{error}</Text><PrimaryButton label="检查或更新命盘" onPress={onBazi} /></View> : null}
+    {!loading && context && !context.user_visible ? <View style={[styles.card, styles.yearErrorCard]}><Kicker label="审计未通过" color={colors.terracotta} /><Text style={styles.yearEmptyTitle}>结果已停止展示。</Text><Text style={styles.yearEmptyText}>系统没有用近似结果替代失败结果。请更新命盘，或稍后重新计算。</Text><PrimaryButton label="更新命盘" onPress={onBazi} /></View> : null}
+    {!loading && context?.user_visible && annual && monthly ? <>
+      <View style={[styles.card, styles.yearVerifiedHero]}>
+        <View style={styles.yearVerifiedTop}><Kicker label={`已审计流年 · ${annual.label_year}`} color={colors.terracotta} /><View style={styles.yearAuditChip}><Text style={styles.yearAuditChipText}>校验通过</Text></View></View>
+        <Text style={styles.yearPillar}>{annual.pillar.value}</Text>
+        <Text style={styles.yearLayerNote}>确定性历法层 · 不是吉凶解释</Text>
+        <View style={styles.yearBoundaryGrid}>
+          <View style={styles.yearBoundaryItem}><Text style={styles.yearBoundaryLabel}>{annual.start_boundary.name}起</Text><Text style={styles.yearBoundaryValue}>{formatCycleBoundary(annual.start_boundary.boundary_time_utc, timezone)}</Text></View>
+          <View style={styles.yearBoundaryItem}><Text style={styles.yearBoundaryLabel}>{annual.end_boundary.name}止</Text><Text style={styles.yearBoundaryValue}>{formatCycleBoundary(annual.end_boundary.boundary_time_utc, timezone)}</Text></View>
+        </View>
+      </View>
+      <View style={styles.yearCycleGrid}>
+        <View style={[styles.card, styles.yearCycleCard]}><Kicker label="当前大运" color={colors.lilac} />{luck?.status === 'active' && luck.current_period ? <><Text style={styles.yearCyclePillar}>{luck.current_period.pillar.value}</Text><Text style={styles.yearCycleMeta}>第 {luck.current_period.index} 运</Text><Text style={styles.yearCycleDetail}>{luck.current_period.start_at_local.slice(0, 10)} — {luck.current_period.end_at_local_exclusive.slice(0, 10)}</Text></> : <><Text style={styles.yearCyclePillar}>{luck?.status === 'pre_luck' ? '未起运' : '范围外'}</Text><Text style={styles.yearCycleDetail}>{luck?.status === 'pre_luck' ? `${luck.next_transition_local?.slice(0, 16).replace('T', ' ') ?? '待定'} 起运` : '当前时刻超出八步大运范围'}</Text></>}</View>
+        <View style={[styles.card, styles.yearCycleCard]}><Kicker label={`当前流月 · 第 ${monthly.sequence_from_lichun} 月`} color={colors.blue} /><Text style={styles.yearCyclePillar}>{monthly.pillar.value}</Text><Text style={styles.yearCycleMeta}>{monthly.start_boundary.name} → {monthly.end_boundary.name}</Text><Text style={styles.yearCycleDetail}>{formatCycleBoundary(monthly.end_boundary.boundary_time_utc, timezone)}</Text></View>
+      </View>
+      <View style={[styles.card, styles.yearAuditCard]}><Kicker label="计算证据" color={colors.sage} /><Text style={styles.yearAuditTitle}>双引擎一致，边界检查已通过。</Text><Text style={styles.yearAuditText}>{context.audit.primary_engine} × {context.audit.verification_engine}</Text><Text style={styles.yearAuditText}>规则 {context.chart.rule_profile.timezone_database} · 哈希 {context.chart.calculation_hash.slice(0, 12)}</Text>{savedAt ? <Text style={styles.yearAuditText}>本机命盘保存于 {new Date(savedAt).toLocaleString('zh-CN')}</Text> : null}</View>
+      <View style={styles.yearInterpretationNotice}><Kicker label="解释层尚未开放" color={colors.gold} /><Text style={styles.yearInterpretationTitle}>不输出未经验证的事业、财务、关系吉凶。</Text><Text style={styles.yearInterpretationText}>待流派规则、证据链和语言安全审核完成后，再把文化解释与确定性计算分层呈现。</Text><Pressable onPress={onBazi} style={styles.secondaryButton}><Text style={styles.secondaryButtonText}>查看或更新命盘 →</Text></Pressable></View>
+    </> : null}
   </View>;
 }
 
@@ -182,20 +249,28 @@ export default function App() {
   const [modal, setModal] = useState<ModalKey>(null);
   const [clarityStep, setClarityStep] = useState(1);
   const [apiOnline, setApiOnline] = useState(false);
+  const [chartRevision, setChartRevision] = useState(0);
   const openClarity = () => { setClarityStep(1); setModal('clarity'); };
   useEffect(() => {
     getApiHealth().then(() => setApiOnline(true)).catch(() => setApiOnline(false));
   }, []);
-  return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={colors.paper} /><View style={styles.app}><Header onSafety={() => setModal('safety')} onProfile={() => setModal('profile')} apiOnline={apiOnline} /><ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>{view === 'daily' ? <DailyScreen onClarity={openClarity} onStatus={() => setModal('status')} /> : view === 'journey' ? <JourneyScreen onClarity={openClarity} /> : <YearScreen />}</ScrollView><TabBar view={view} setView={setView} onClarity={openClarity} onBazi={() => setModal('bazi')} />
+  return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={colors.paper} /><View style={styles.app}><Header onSafety={() => setModal('safety')} onProfile={() => setModal('profile')} apiOnline={apiOnline} /><ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>{view === 'daily' ? <DailyScreen onClarity={openClarity} onStatus={() => setModal('status')} /> : view === 'journey' ? <JourneyScreen onClarity={openClarity} /> : <YearScreen onBazi={() => setModal('bazi')} revision={chartRevision} />}</ScrollView><TabBar view={view} setView={setView} onClarity={openClarity} onBazi={() => setModal('bazi')} />
     <Modal visible={modal === 'clarity'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><ClaritySheet step={clarityStep} setStep={setClarityStep} onClose={() => setModal(null)} /></View></Modal>
     <Modal visible={modal === 'status'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><StatusSheet onClose={() => setModal(null)} /></View></Modal>
     <Modal visible={modal === 'safety'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><SafetySheet onClose={() => setModal(null)} /></View></Modal>
     <Modal visible={modal === 'profile'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><ProfileSheet onClose={() => setModal(null)} /></View></Modal>
-    <Modal visible={modal === 'bazi'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><BaziSheet onClose={() => setModal(null)} /></View></Modal>
+    <Modal visible={modal === 'bazi'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><BaziSheet onClose={() => setModal(null)} onChartStorageChange={() => setChartRevision(value => value + 1)} /></View></Modal>
   </View></SafeAreaView>;
 }
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.paper }, app: { flex: 1, backgroundColor: colors.paper }, scrollContent: { padding: 20, paddingBottom: 30 }, header: { height: 66, paddingHorizontal: 20, borderBottomWidth: 1, borderBottomColor: colors.line, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, brandLine: { flexDirection: 'row', alignItems: 'center', gap: 9 }, brandMark: { width: 32, height: 32, borderRadius: 10, backgroundColor: colors.ink, alignItems: 'center', justifyContent: 'center' }, brandMarkText: { color: colors.paper, fontSize: 18, fontWeight: '700' }, brandName: { color: colors.ink, fontSize: 17, fontWeight: '700' }, brandSubtitle: { color: colors.muted, fontSize: 9, marginTop: 2 }, headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 }, headerIcon: { padding: 8 }, profileChip: { flexDirection: 'row', alignItems: 'center', gap: 6 }, avatar: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#D2D9C7', alignItems: 'center', justifyContent: 'center' }, avatarText: { color: colors.sageDeep, fontSize: 12 }, profileName: { color: colors.ink, fontSize: 11 }, chevron: { color: colors.muted, fontSize: 15 }, heading: { paddingTop: 18, marginBottom: 24 }, eyebrow: { color: colors.muted, fontSize: 9, letterSpacing: 1.2 }, pageTitle: { color: colors.ink, fontSize: 30, fontWeight: '600', marginTop: 11, letterSpacing: -1 }, pageSubtitle: { color: colors.muted, fontSize: 12, marginTop: 8, lineHeight: 19 }, rowCards: { gap: 14 }, card: { borderWidth: 1, borderColor: colors.line, borderRadius: 21, backgroundColor: colors.card, padding: 19, shadowColor: '#514F43', shadowOpacity: 0.05, shadowRadius: 12, shadowOffset: { width: 0, height: 5 }, elevation: 1 }, focusCard: { backgroundColor: '#FFFDF8' }, stateCard: { backgroundColor: '#F2F2EA' }, kicker: { flexDirection: 'row', alignItems: 'center', gap: 7 }, kickerDot: { width: 6, height: 6, borderRadius: 3 }, kickerText: { color: '#858981', fontSize: 9, letterSpacing: 0.9, textTransform: 'uppercase' }, focusTitle: { color: colors.ink, fontSize: 22, fontWeight: '600', lineHeight: 31, marginTop: 27, letterSpacing: -0.6 }, bodyText: { color: colors.muted, fontSize: 11, lineHeight: 19, marginTop: 11 }, noteBox: { borderTopWidth: 1, borderTopColor: colors.line, marginTop: 28, paddingTop: 14 }, noteLabel: { color: colors.terracotta, fontSize: 9, marginBottom: 6 }, noteText: { color: colors.ink, fontSize: 13, lineHeight: 21, fontWeight: '500' }, evidenceWrap: { borderTopWidth: 1, borderTopColor: colors.line, marginTop: 17, paddingTop: 11 }, evidenceToggle: { flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 2 }, evidenceGlyph: { color: colors.sageDeep, fontSize: 14 }, evidenceLabel: { flex: 1, color: '#888C83', fontSize: 10 }, evidenceChevron: { color: '#AAA9A1', fontSize: 15 }, evidenceBody: { marginTop: 12, gap: 7 }, evidenceSource: { backgroundColor: '#F0EFE8', borderRadius: 10, padding: 10 }, evidenceSourceTitle: { color: '#6C7269', fontSize: 9, fontWeight: '600' }, evidenceSourceText: { color: '#999B93', fontSize: 9, lineHeight: 15, marginTop: 4 }, evidenceSummary: { color: '#747971', fontSize: 11, lineHeight: 18, marginTop: 3 }, evidenceMeta: { flexDirection: 'row', justifyContent: 'space-between' }, evidenceMetaText: { color: '#9A9D94', fontSize: 8 }, cardTopline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, textButton: { color: '#7F857C', fontSize: 10 }, orbit: { height: 170, alignItems: 'center', justifyContent: 'center', position: 'relative' }, orbitRingOne: { position: 'absolute', width: 184, height: 108, borderRadius: 92, borderWidth: 1, borderColor: 'rgba(137,155,125,0.25)', transform: [{ rotate: '-24deg' }] }, orbitRingTwo: { position: 'absolute', width: 220, height: 144, borderRadius: 110, borderWidth: 1, borderColor: 'rgba(196,161,95,0.22)', transform: [{ rotate: '28deg' }] }, orbitCenter: { width: 75, height: 75, borderRadius: 38, backgroundColor: '#FFFEFA', alignItems: 'center', justifyContent: 'center', elevation: 2 }, orbitScore: { color: colors.ink, fontSize: 24, fontWeight: '600' }, orbitLabel: { color: colors.muted, fontSize: 9, marginTop: 3 }, metricRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }, metricTrack: { flex: 1, height: 4, borderRadius: 2, backgroundColor: '#DFE0D5', overflow: 'hidden' }, metricValue: { height: 4, borderRadius: 2 }, metricLabel: { width: 35, color: '#6F746C', fontSize: 9 }, metricValueText: { width: 28, color: '#A0A29A', fontSize: 9, textAlign: 'right' }, stateFooter: { borderTopWidth: 1, borderTopColor: colors.line, marginTop: 16, paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between' }, trend: { color: colors.sageDeep }, sectionHeading: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 34, marginBottom: 14 }, sectionTitle: { color: colors.ink, fontSize: 19, fontWeight: '600', marginTop: 8, letterSpacing: -0.4 }, estimate: { color: '#A1A39B', fontSize: 9 }, actionRow: { flexDirection: 'row', gap: 14 }, actionNumber: { color: '#C2C5BD', fontSize: 13, paddingTop: 3 }, actionCopy: { flex: 1 }, actionType: { color: colors.terracotta, fontSize: 9 }, actionTitle: { color: colors.ink, fontSize: 15, fontWeight: '600', lineHeight: 22, marginTop: 7 }, primaryButton: { marginTop: 18, borderRadius: 11, backgroundColor: colors.ink, padding: 13, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }, primaryButtonDone: { backgroundColor: colors.sageDeep }, primaryButtonLabel: { color: '#FFF', fontSize: 11, fontWeight: '600' }, primaryButtonArrow: { color: '#FFF', fontSize: 15 }, pressed: { opacity: 0.78, transform: [{ scale: 0.99 }] }, twoCardRow: { gap: 14, marginTop: 27 }, clarityCard: { backgroundColor: '#E9EEEA' }, chapterCard: { backgroundColor: '#FFFEFA' }, quickRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 42 }, quickTitle: { color: colors.ink, fontSize: 19, fontWeight: '600' }, quickText: { color: '#778078', fontSize: 10, marginTop: 6 }, arrowButton: { width: 38, height: 38, borderRadius: 19, borderWidth: 1, borderColor: 'rgba(88,109,84,0.22)', alignItems: 'center', justifyContent: 'center' }, arrowButtonText: { color: colors.sageDeep, fontSize: 17 }, chapterStatus: { color: colors.lilac, fontSize: 9, marginTop: 17 }, chapterTitle: { color: colors.ink, fontSize: 15, fontWeight: '600', lineHeight: 21, marginTop: 7 }, chapterText: { color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 6 }, mirrorStrip: { borderTopWidth: 1, borderBottomWidth: 1, borderColor: colors.line, paddingVertical: 22, marginTop: 28 }, mirrorTitle: { color: colors.ink, fontSize: 17, fontWeight: '600', marginTop: 9 }, chart: { height: 44, flexDirection: 'row', alignItems: 'flex-end', gap: 7, marginTop: 17, borderBottomWidth: 1, borderBottomColor: colors.line, paddingHorizontal: 8 }, chartBar: { width: 8, minHeight: 5, backgroundColor: '#C7D2C2', borderTopLeftRadius: 5, borderTopRightRadius: 5 }, chartBarCurrent: { backgroundColor: colors.sageDeep }, journeyHero: { flexDirection: 'row', gap: 14, alignItems: 'center', backgroundColor: '#F2F5ED' }, journeyTitle: { color: colors.ink, fontSize: 22, fontWeight: '600', lineHeight: 30, marginTop: 14, marginBottom: 2 }, progressCircle: { width: 94, height: 94, borderRadius: 47, borderWidth: 1, borderColor: 'rgba(88,109,84,0.28)', alignItems: 'center', justifyContent: 'center' }, progressNumber: { color: colors.ink, fontSize: 20, fontWeight: '600' }, progressLabel: { color: colors.muted, fontSize: 8, marginTop: 4 }, timelineItem: { flexDirection: 'row', gap: 13, paddingBottom: 25 }, timelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: '#C4C8BF', marginTop: 5 }, timelineDotActive: { backgroundColor: colors.terracotta }, timelineContent: { flex: 1 }, timelineLabel: { color: '#999D94', fontSize: 8 }, timelineTitle: { color: colors.ink, fontSize: 14, fontWeight: '600', lineHeight: 20, marginTop: 7 }, timelineText: { color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 5 }, smallButton: { alignSelf: 'flex-start', backgroundColor: '#EFF2EB', borderRadius: 9, paddingVertical: 9, paddingHorizontal: 11, marginTop: 12 }, smallButtonText: { color: colors.sageDeep, fontSize: 10 }, conditionsCard: { marginTop: 2 }, conditionRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18 }, conditionNumber: { color: '#B8C1B3', fontSize: 9 }, conditionText: { color: colors.ink, fontSize: 13 }, bottomNotice: { backgroundColor: '#EEEFE7', borderRadius: 15, padding: 17, marginTop: 26 }, noticeText: { color: '#777D74', fontSize: 12, lineHeight: 19, marginTop: 7 }, secondaryButton: { backgroundColor: colors.ink, borderRadius: 10, padding: 12, marginTop: 14, alignItems: 'center' }, secondaryButtonText: { color: '#FFF', fontSize: 10 }, yearHero: { backgroundColor: '#FAF2E8', paddingBottom: 20 }, yearTitle: { color: colors.ink, fontSize: 23, fontWeight: '600', lineHeight: 31, marginTop: 17 }, tagRow: { flexDirection: 'row', gap: 7, marginTop: 17 }, tag: { color: '#827663', backgroundColor: '#FFFDF8', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 7, fontSize: 8 }, yearCore: { alignSelf: 'center', width: 94, height: 94, borderRadius: 47, backgroundColor: '#FFFDF8', alignItems: 'center', justifyContent: 'center', marginTop: 20 }, yearCoreNumber: { color: colors.ink, fontSize: 20, fontWeight: '600' }, yearCoreLabel: { color: colors.muted, fontSize: 8, marginTop: 4 }, quarterGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 }, quarterCard: { width: '48%', minHeight: 145, borderWidth: 1, borderColor: colors.line, borderRadius: 15, padding: 14, backgroundColor: 'rgba(255,255,252,0.5)' }, quarterActive: { borderColor: 'rgba(199,122,89,0.35)', backgroundColor: '#FAF2E8' }, quarterTitle: { color: colors.ink, fontSize: 18, fontWeight: '600', marginTop: 14 }, quarterText: { color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 6 }, quarterLine: { height: 3, borderRadius: 3, backgroundColor: '#E1E2DA', marginTop: 18 }, quarterLineDone: { backgroundColor: colors.sage }, quarterLineActive: { backgroundColor: colors.terracotta }, domainGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 9, marginTop: 26 }, domainCard: { width: '31.7%', minHeight: 115, borderWidth: 1, borderColor: colors.line, borderRadius: 14, padding: 12, backgroundColor: colors.card }, domainIcon: { color: colors.sageDeep, fontSize: 18 }, domainLabel: { color: '#969A91', fontSize: 8, marginTop: 8 }, domainTitle: { color: colors.ink, fontSize: 11, fontWeight: '600', lineHeight: 16, marginTop: 5 }, monthCard: { marginTop: 27 }, monthRow: { gap: 9, marginTop: 18 }, monthItem: { backgroundColor: '#F2F1E9', borderRadius: 12, padding: 13, minHeight: 55 }, monthItemActive: { backgroundColor: '#E8EEE4', borderWidth: 1, borderColor: '#D4DFCF' }, monthNumber: { color: '#B2B8AC', fontSize: 13 }, monthTitle: { color: colors.ink, fontSize: 13, fontWeight: '600', position: 'absolute', left: 48, top: 12 }, monthText: { color: colors.muted, fontSize: 9, position: 'absolute', left: 48, top: 32 }, tabBar: { height: 68, borderTopWidth: 1, borderTopColor: colors.line, backgroundColor: 'rgba(249,248,243,0.97)', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingHorizontal: 5 }, tabItem: { flex: 1, alignItems: 'center', gap: 3 }, tabIcon: { color: '#9B9F96', fontSize: 18 }, tabLabel: { color: '#9B9F96', fontSize: 9 }, tabActive: { color: colors.ink }, centerTab: { flex: 1, alignItems: 'center', marginTop: -24 }, centerTabIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.ink, color: '#FFF', textAlign: 'center', lineHeight: 35, fontSize: 16, borderWidth: 4, borderColor: colors.paper, overflow: 'hidden' }, centerTabLabel: { color: colors.sageDeep, fontSize: 9, marginTop: 2 }, modalBackdrop: { flex: 1, backgroundColor: 'rgba(39,43,39,0.35)', justifyContent: 'flex-end' }, sheet: { maxHeight: '92%', backgroundColor: '#F9F8F3', borderTopLeftRadius: 26, borderTopRightRadius: 26, paddingTop: 19, paddingHorizontal: 20, paddingBottom: 25 }, sheetHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 12 }, sheetHeaderTitle: { color: colors.ink, fontSize: 13, fontWeight: '600' }, closeText: { color: '#989C92', fontSize: 25, lineHeight: 25 }, sheetContent: { paddingBottom: 12 }, sheetProgress: { flexDirection: 'row', gap: 5, marginBottom: 27 }, sheetProgressBar: { height: 3, flex: 1, borderRadius: 2, backgroundColor: '#E3E4DC' }, sheetProgressActive: { backgroundColor: colors.sageDeep }, sheetEyebrow: { color: colors.muted, fontSize: 9, letterSpacing: 1.1, marginTop: 4 }, sheetTitle: { color: colors.ink, fontSize: 25, fontWeight: '600', lineHeight: 33, marginTop: 12, letterSpacing: -0.5 }, sheetSubtitle: { color: colors.muted, fontSize: 11, lineHeight: 18, marginTop: 9, marginBottom: 17 }, textArea: { minHeight: 125, borderWidth: 1, borderColor: 'rgba(43,48,43,0.2)', borderRadius: 13, padding: 14, color: colors.ink, fontSize: 12, textAlignVertical: 'top', backgroundColor: '#FFFDF8' }, emotionGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 14 }, emotionButton: { width: '23%', paddingVertical: 11, borderWidth: 1, borderColor: colors.line, borderRadius: 10, alignItems: 'center', backgroundColor: '#FFFDF8' }, emotionSelected: { backgroundColor: '#E8EEE4', borderColor: '#CCDAC6' }, triadItem: { backgroundColor: '#F0F0E9', borderRadius: 10, padding: 12, marginTop: 8, borderLeftWidth: 3, borderLeftColor: '#CBD4C5' }, triadLabel: { color: '#8C9188', fontSize: 8, letterSpacing: 0.3 }, triadText: { color: '#686E66', fontSize: 11, lineHeight: 17, marginTop: 5 }, recommendation: { backgroundColor: '#E7EEE4', borderRadius: 12, padding: 14, marginTop: 14 }, recommendationTitle: { color: colors.ink, fontSize: 14, fontWeight: '600', lineHeight: 21, marginTop: 7 }, choiceRow: { marginTop: 21 }, choiceHeader: { flexDirection: 'row', justifyContent: 'space-between' }, choiceLabel: { color: '#737970', fontSize: 12 }, choiceValue: { color: colors.sageDeep, fontSize: 12 }, choiceButtons: { flexDirection: 'row', gap: 8, marginTop: 10 }, choiceButton: { flex: 1, borderWidth: 1, borderColor: colors.line, borderRadius: 8, paddingVertical: 10, alignItems: 'center' }, choiceButtonActive: { backgroundColor: '#E8EEE4', borderColor: '#CCDAC6' }, safetyIcon: { width: 43, height: 43, borderRadius: 14, backgroundColor: '#E8EEE4', alignItems: 'center', justifyContent: 'center', marginTop: 6 }, safetyItem: { color: '#6E766B', fontSize: 11, marginTop: 13 },
   legalNoticeCard: { borderWidth: 1, borderColor: 'rgba(199,122,89,0.24)', borderRadius: 13, backgroundColor: '#FAF2E8', padding: 14, marginTop: 20 }, legalNoticeTitle: { color: colors.terracotta, fontSize: 11, fontWeight: '700' }, legalNoticeText: { color: '#756B5E', fontSize: 10, lineHeight: 17, marginTop: 8 },
+  yearLoadingCard: { alignItems: 'center', gap: 12, paddingVertical: 34 }, yearLoadingText: { color: colors.muted, fontSize: 11 },
+  yearEmptyCard: { backgroundColor: '#FAF2E8' }, yearErrorCard: { backgroundColor: '#FFF7F2', borderColor: 'rgba(199,122,89,0.3)' }, yearEmptyTitle: { color: colors.ink, fontSize: 21, fontWeight: '600', lineHeight: 29, marginTop: 20 }, yearEmptyText: { color: colors.muted, fontSize: 11, lineHeight: 19, marginTop: 10 },
+  yearVerifiedHero: { backgroundColor: '#FAF2E8' }, yearVerifiedTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, yearAuditChip: { backgroundColor: '#E3ECE0', borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5 }, yearAuditChipText: { color: colors.sageDeep, fontSize: 8, fontWeight: '700' }, yearPillar: { color: colors.ink, fontSize: 52, fontWeight: '600', letterSpacing: 7, textAlign: 'center', marginTop: 27 }, yearLayerNote: { color: '#8D806D', fontSize: 9, textAlign: 'center', marginTop: 8 },
+  yearBoundaryGrid: { gap: 9, marginTop: 25 }, yearBoundaryItem: { backgroundColor: 'rgba(255,253,248,0.85)', borderRadius: 12, padding: 12 }, yearBoundaryLabel: { color: colors.terracotta, fontSize: 9, fontWeight: '600' }, yearBoundaryValue: { color: colors.ink, fontSize: 11, lineHeight: 17, marginTop: 5 },
+  yearCycleGrid: { gap: 11, marginTop: 13 }, yearCycleCard: { minHeight: 155 }, yearCyclePillar: { color: colors.ink, fontSize: 28, fontWeight: '600', letterSpacing: 3, marginTop: 20 }, yearCycleMeta: { color: colors.sageDeep, fontSize: 10, fontWeight: '600', marginTop: 8 }, yearCycleDetail: { color: colors.muted, fontSize: 9, lineHeight: 15, marginTop: 7 },
+  yearAuditCard: { marginTop: 13, backgroundColor: '#F2F5ED' }, yearAuditTitle: { color: colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 23, marginTop: 16 }, yearAuditText: { color: colors.muted, fontSize: 9, lineHeight: 15, marginTop: 7 },
+  yearInterpretationNotice: { backgroundColor: '#EEEFE7', borderRadius: 15, padding: 17, marginTop: 13 }, yearInterpretationTitle: { color: colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 23, marginTop: 12 }, yearInterpretationText: { color: colors.muted, fontSize: 10, lineHeight: 17, marginTop: 7 },
 });

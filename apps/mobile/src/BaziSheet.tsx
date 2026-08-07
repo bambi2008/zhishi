@@ -178,7 +178,7 @@ function ResultView({ result, currentContext, contextLoading }: { result: BaziCa
   </View>;
 }
 
-export function BaziSheet({ onClose }: { onClose: () => void }) {
+export function BaziSheet({ onClose, onChartStorageChange }: { onClose: () => void; onChartStorageChange?: () => void }) {
   const [birthDate, setBirthDate] = useState('');
   const [birthTime, setBirthTime] = useState('');
   const [timezone, setTimezone] = useState('');
@@ -381,6 +381,7 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       const stored = await saveStoredBaziChart(lastInput, result);
       setSavedAt(stored.saved_at);
       setStorageMessage('已保存在这台设备。');
+      onChartStorageChange?.();
     } catch {
       setStorageMessage('保存失败，请检查设备存储权限后重试。');
     }
@@ -391,6 +392,7 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       await clearStoredBaziChart();
       setSavedAt(null);
       setStorageMessage('已清除本机保存；当前结果仍可查看。');
+      onChartStorageChange?.();
     } catch {
       setStorageMessage('清除失败，请稍后重试。');
     }

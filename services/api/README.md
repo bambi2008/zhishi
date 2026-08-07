@@ -65,6 +65,8 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 
 `as_of_utc` 必须带 UTC 偏移，避免服务器时区造成隐式变化。接口一次返回稳定命盘、当前所在大运、下一步大运及交接时刻、当前流年与前后两个精确立春边界，以及当前流月与前后两个精确“节”边界。当前状态不写入命盘计算哈希；同一输入和同一 `as_of_utc` 可复现同一结果。流年核对主引擎年柱、1984 甲子基准公式及 `sxtwl` 立春时刻；流月核对主引擎月柱、五虎遁公式及 `sxtwl` 节气时刻。任一审计失败时停止展示当前周期。
 
+旧的 `POST /api/v1/year-navigation/{year}` 解释骨架会明确返回 `501 year_navigation_requires_chart_context`。在解释层完成命盘绑定、流派规则、证据链和语言安全审核前，服务不会返回静态季度或领域判断来冒充个性化结果。
+
 ## 出生地搜索
 
 `POST /api/v1/locations/search`

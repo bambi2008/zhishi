@@ -205,6 +205,14 @@ def test_onboarding_and_guidance_have_evidence_chain() -> None:
     assert guidance.json()["reasoning"]["evidence_chain"]
 
 
+def test_unbound_year_interpretation_is_disabled_instead_of_fabricated() -> None:
+    profile = client.post("/api/v1/onboarding", json={"email": "year@example.com"})
+    user_id = profile.json()["user_id"]
+    response = client.post(f"/api/v1/year-navigation/2026?user_id={user_id}")
+    assert response.status_code == 501
+    assert response.json()["detail"]["code"] == "year_navigation_requires_chart_context"
+
+
 def test_safety_signal_stops_normal_guidance() -> None:
     profile = client.post("/api/v1/onboarding", json={"email": "safe@example.com"})
     user_id = profile.json()["user_id"]
