@@ -10,6 +10,8 @@ SolarTimeMode = Literal["civil", "mean_solar", "apparent_solar"]
 DayBoundaryRule = Literal["midnight", "late_zi_next_day"]
 TimeAccuracy = Literal["exact", "approximate", "hour_only"]
 Gender = Literal["male", "female"]
+LuckDirection = Literal["forward", "reverse"]
+LuckStartRule = Literal["precise_minutes", "traditional_segments"]
 CheckStatus = Literal["passed", "failed", "skipped"]
 
 
@@ -20,6 +22,8 @@ class BaziCalculationInput(BaseModel):
     latitude: float | None = Field(default=None, ge=-90, le=90)
     birth_location_name: str = Field(default="", max_length=200)
     gender: Gender | None = None
+    luck_direction_override: LuckDirection | None = None
+    luck_start_rule: LuckStartRule = "precise_minutes"
     time_accuracy: TimeAccuracy = "exact"
     uncertainty_minutes: int | None = Field(default=None, ge=0, le=120)
     dst_fold: Literal[0, 1] | None = None
@@ -121,6 +125,38 @@ class RuleProfile(BaseModel):
     month_boundary: Literal["exact_jie"] = "exact_jie"
     solar_time_mode: SolarTimeMode
     day_boundary: DayBoundaryRule
+    luck_start_rule: LuckStartRule
+
+
+class LuckStartAge(BaseModel):
+    years: int = Field(ge=0)
+    months: int = Field(ge=0, le=11)
+    days: int = Field(ge=0, le=29)
+    hours: int = Field(ge=0, le=23)
+    decimal_years: float = Field(ge=0)
+
+
+class LuckPeriod(BaseModel):
+    index: int = Field(ge=1)
+    pillar: PillarDetails
+    start_at_local: datetime
+    end_at_local_exclusive: datetime
+    start_age: LuckStartAge
+
+
+class LuckCycleResult(BaseModel):
+    status: Literal["ok", "audit_failed"]
+    user_visible: bool
+    direction: LuckDirection
+    direction_basis: str
+    year_stem_yin_yang: Literal["yang", "yin"]
+    start_rule: LuckStartRule
+    start_boundary: BoundaryCandidate
+    birth_to_boundary_seconds: int = Field(ge=0)
+    start_age: LuckStartAge
+    start_at_local: datetime
+    periods: list[LuckPeriod]
+    audit: AuditReport
 
 
 class BaziCalculationResult(BaseModel):
@@ -132,4 +168,5 @@ class BaziCalculationResult(BaseModel):
     alternatives: list[AlternativeChart] = Field(default_factory=list)
     audit: AuditReport
     rule_profile: RuleProfile
+    luck_cycles: LuckCycleResult | None = None
     calculation_hash: str

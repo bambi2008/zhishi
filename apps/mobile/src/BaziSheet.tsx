@@ -12,8 +12,10 @@ import {
 import {
   BaziCalculationInput,
   BaziCalculationResult,
+  BaziGender,
   DayBoundaryRule,
   LocationSearchResult,
+  LuckStartRule,
   SolarTimeMode,
   calculateBaziChart,
   searchBirthLocations,
@@ -48,6 +50,16 @@ const dayRules: Array<[DayBoundaryRule, string]> = [
   ['late_zi_next_day', '晚子时换日'],
 ];
 
+const genderOptions: Array<[BaziGender | '', string]> = [
+  ['male', '男'],
+  ['female', '女'],
+];
+
+const luckStartRules: Array<[LuckStartRule, string]> = [
+  ['precise_minutes', '分钟精算'],
+  ['traditional_segments', '传统折算'],
+];
+
 function validLocalDateTime(date: string, time: string): boolean {
   const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
   const timeMatch = /^(\d{2}):(\d{2})$/.exec(time);
@@ -76,8 +88,32 @@ function formatSavedAt(value: string): string {
   return Number.isNaN(date.getTime()) ? '已保存' : `保存于 ${date.toLocaleString('zh-CN')}`;
 }
 
+function formatLuckAge(age: { years: number; months: number; days: number; hours: number }): string {
+  return `${age.years} 年 ${age.months} 月 ${age.days} 日 ${age.hours} 时`;
+}
+
+function formatLuckDate(value: string): string {
+  return value.replace('T', ' ').slice(0, 16);
+}
+
 function PillarCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return <View style={styles.pillarCard}><Text style={styles.pillarLabel}>{label}</Text><Text style={styles.pillarValue}>{value}</Text><Text style={styles.pillarDetail}>{detail}</Text></View>;
+}
+
+function LuckCycleView({ result }: { result: BaziCalculationResult }) {
+  const luck = result.luck_cycles;
+  if (!luck) return null;
+  if (!luck.user_visible) {
+    return <View style={styles.warningCard}><Text style={styles.warningTitle}>大运校验未通过</Text><Text style={styles.warningText}>大运结果已停止展示，四柱仍可独立查看。</Text></View>;
+  }
+  return <View style={styles.luckWrap}>
+    <View style={styles.luckHeader}><View><Text style={styles.eyebrow}>三路规则审计通过</Text><Text style={styles.luckTitle}>大运时间轴</Text></View><View style={styles.directionChip}><Text style={styles.directionText}>{luck.direction === 'forward' ? '顺行' : '逆行'}</Text></View></View>
+    <View style={styles.luckStartCard}><Text style={styles.factTitle}>起运</Text><Text style={styles.luckStartValue}>{formatLuckAge(luck.start_age)}后</Text><Text style={styles.factText}>{formatLuckDate(luck.start_at_local)} · {luck.direction_basis}</Text><Text style={styles.factText}>取 {luck.start_boundary.name} 精确时刻 · {luck.start_rule === 'precise_minutes' ? '分钟折算法' : '天数/时辰折算法'}</Text></View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.luckPeriods} nestedScrollEnabled>
+      {luck.periods.map(period => <View key={period.index} style={styles.luckPeriodCard}><Text style={styles.luckIndex}>第 {period.index} 运</Text><Text style={styles.luckPillar}>{period.pillar.value}</Text><Text style={styles.luckTenGod}>{period.pillar.stem_ten_god}</Text><View style={styles.luckDivider} /><Text style={styles.luckAge}>{period.start_age.years} 岁起</Text><Text style={styles.luckDate}>{period.start_at_local.slice(0, 10)}</Text></View>)}
+    </ScrollView>
+    <Text style={styles.luckMeta}>{luck.audit.primary_engine} × {luck.audit.verification_engine}</Text>
+  </View>;
 }
 
 function ResultView({ result }: { result: BaziCalculationResult }) {
@@ -104,6 +140,7 @@ function ResultView({ result }: { result: BaziCalculationResult }) {
     </View>
     {result.boundary.risk !== 'none' && <View style={styles.warningCard}><Text style={styles.warningTitle}>边界提醒</Text>{result.boundary.notes.map(note => <Text key={note} style={styles.warningText}>• {note}</Text>)}</View>}
     {result.alternatives.length > 0 && <View style={styles.alternativeCard}><Text style={styles.factTitle}>出生时间误差可能产生的结果</Text>{result.alternatives.map(item => <Text key={item.label} style={styles.alternativeText}>{item.label === 'earliest' ? '最早' : '最晚'}：{item.year} {item.month} {item.day} {item.hour}</Text>)}</View>}
+    <LuckCycleView result={result} />
     <Text style={styles.engineMeta}>{result.audit.primary_engine} × {result.audit.verification_engine} · {result.calculation_hash.slice(0, 12)}</Text>
   </View>;
 }
@@ -121,6 +158,8 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
   const [locationMessage, setLocationMessage] = useState('');
   const [solarMode, setSolarMode] = useState<SolarTimeMode>('civil');
   const [dayRule, setDayRule] = useState<DayBoundaryRule>('midnight');
+  const [gender, setGender] = useState<BaziGender | ''>('');
+  const [luckStartRule, setLuckStartRule] = useState<LuckStartRule>('precise_minutes');
   const [result, setResult] = useState<BaziCalculationResult | null>(null);
   const [lastInput, setLastInput] = useState<BaziCalculationInput | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
@@ -142,6 +181,8 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       setLatitude(stored.input.latitude ?? null);
       setSolarMode(stored.input.solar_time_mode);
       setDayRule(stored.input.day_boundary_rule);
+      setGender(stored.input.gender ?? '');
+      setLuckStartRule(stored.input.luck_start_rule ?? 'precise_minutes');
       setLastInput(stored.input);
       setResult(stored.result);
       setSavedAt(stored.saved_at);
@@ -212,6 +253,10 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       setError('请填写 IANA 时区，例如 Asia/Shanghai。');
       return;
     }
+    if (!gender) {
+      setError('请选择传统排运性别；该字段只用于计算大运顺逆。');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -221,6 +266,8 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
         longitude: longitudeValue,
         latitude: latitude ?? undefined,
         birth_location_name: locationName.trim(),
+        gender,
+        luck_start_rule: luckStartRule,
         time_accuracy: 'exact',
         solar_time_mode: solarMode,
         day_boundary_rule: dayRule,
@@ -273,6 +320,9 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       <Text style={styles.fieldHint}>选择搜索结果后自动填写；也可手动修改。东经为正，西经为负。</Text>
       <Segmented label="时间模式" options={solarModes} value={solarMode} onChange={setSolarMode} />
       <Segmented label="换日规则" options={dayRules} value={dayRule} onChange={setDayRule} />
+      <Segmented label="传统排运性别" options={genderOptions} value={gender} onChange={setGender} />
+      <Text style={styles.ruleHint}>仅用于“阳年男/阴年女顺，阴年男/阳年女逆”的传统排运规则，不用于判断性别身份。</Text>
+      <Segmented label="起运算法" options={luckStartRules} value={luckStartRule} onChange={setLuckStartRule} />
       {error ? <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View> : null}
       <Pressable disabled={loading} onPress={submit} style={({ pressed }) => [styles.calculateButton, pressed && styles.pressed, loading && styles.disabled]}>{loading ? <ActivityIndicator color="#FFF" /> : <><Text style={styles.calculateText}>{result ? '重新计算' : '开始精确排盘'}</Text><Text style={styles.calculateArrow}>→</Text></>}</Pressable>
       {result?.user_visible ? <><ResultView result={result} /><View style={styles.storageCard}><View style={{ flex: 1 }}><Text style={styles.storageTitle}>{savedAt ? '命盘已保存在本机' : '保存这张命盘'}</Text><Text style={styles.storageText}>{savedAt ? formatSavedAt(savedAt) : '仅在你明确操作后保存；数据不会自动上传账户。'}</Text>{storageMessage ? <Text style={styles.storageMessage}>{storageMessage}</Text> : null}</View><Pressable onPress={savedAt ? clearSavedChart : saveChart} style={styles.storageButton}><Text style={styles.storageButtonText}>{savedAt ? '清除' : '保存'}</Text></Pressable></View></> : null}
@@ -304,6 +354,7 @@ const styles = StyleSheet.create({
   fieldLabel: { color: '#737970', fontSize: 10, marginBottom: 7 },
   input: { minHeight: 44, borderWidth: 1, borderColor: 'rgba(43,48,43,0.16)', borderRadius: 11, paddingHorizontal: 12, color: colors.ink, backgroundColor: colors.card, fontSize: 12 },
   fieldHint: { color: '#989B94', fontSize: 9, lineHeight: 15, marginTop: -6, marginBottom: 15 },
+  ruleHint: { color: '#989B94', fontSize: 8, lineHeight: 14, marginTop: -8, marginBottom: 14 },
   locationStatus: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: -4, marginBottom: 12 },
   locationStatusText: { color: colors.muted, fontSize: 9 },
   locationResults: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, backgroundColor: colors.card, overflow: 'hidden', marginTop: -5, marginBottom: 13 },
@@ -346,6 +397,22 @@ const styles = StyleSheet.create({
   warningText: { color: '#816F5E', fontSize: 9, lineHeight: 15, marginTop: 5 },
   alternativeCard: { borderWidth: 1, borderColor: '#E7D3C5', borderRadius: 12, padding: 13, marginTop: 10 },
   alternativeText: { color: colors.ink, fontSize: 10, marginTop: 8 },
+  luckWrap: { marginTop: 22, borderTopWidth: 1, borderTopColor: colors.line, paddingTop: 20 },
+  luckHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  luckTitle: { color: colors.ink, fontSize: 19, fontWeight: '600', marginTop: 7 },
+  directionChip: { borderRadius: 99, backgroundColor: '#FAF2E8', paddingHorizontal: 11, paddingVertical: 7 },
+  directionText: { color: colors.terracotta, fontSize: 9, fontWeight: '700' },
+  luckStartCard: { borderRadius: 12, backgroundColor: colors.sageSoft, padding: 13, marginTop: 14 },
+  luckStartValue: { color: colors.ink, fontSize: 15, fontWeight: '600', marginTop: 7 },
+  luckPeriods: { gap: 8, paddingTop: 12, paddingBottom: 4, paddingRight: 4 },
+  luckPeriodCard: { width: 108, minHeight: 150, borderWidth: 1, borderColor: colors.line, borderRadius: 13, backgroundColor: colors.card, padding: 12 },
+  luckIndex: { color: colors.muted, fontSize: 8 },
+  luckPillar: { color: colors.ink, fontSize: 22, fontWeight: '600', marginTop: 13 },
+  luckTenGod: { color: colors.sage, fontSize: 9, marginTop: 5 },
+  luckDivider: { height: 1, backgroundColor: colors.line, marginVertical: 12 },
+  luckAge: { color: colors.ink, fontSize: 9, fontWeight: '600' },
+  luckDate: { color: colors.muted, fontSize: 8, marginTop: 5 },
+  luckMeta: { color: '#A1A39B', fontSize: 7, textAlign: 'center', marginTop: 10 },
   engineMeta: { color: '#A1A39B', fontSize: 8, textAlign: 'center', marginTop: 13 },
   storageCard: { borderWidth: 1, borderColor: colors.line, borderRadius: 12, backgroundColor: colors.card, marginTop: 15, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 12 },
   storageTitle: { color: colors.ink, fontSize: 11, fontWeight: '600' },

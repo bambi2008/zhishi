@@ -3,11 +3,13 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import UTC, datetime, timedelta, timezone
+from functools import lru_cache
 
 import sxtwl
 from lunar_python import Solar
 from lunar_python.util import LunarUtil
 
+from .luck import calculate_luck_cycles
 from .models import (
     AlternativeChart,
     AuditCheck,
@@ -136,7 +138,8 @@ def _primary_jie_candidates(utc_time: datetime) -> tuple[BoundaryCandidate, Boun
     return result[0], result[1]
 
 
-def _sxtwl_jie_events(center_year: int) -> list[tuple[str, datetime]]:
+@lru_cache(maxsize=256)
+def _sxtwl_jie_events(center_year: int) -> tuple[tuple[str, datetime], ...]:
     events: dict[tuple[str, datetime], None] = {}
     for year in range(center_year - 1, center_year + 2):
         for event in sxtwl.getJieQiByYear(year):
@@ -148,7 +151,7 @@ def _sxtwl_jie_events(center_year: int) -> list[tuple[str, datetime]]:
             reference += timedelta(seconds=whole_seconds)
             utc_value = reference.replace(tzinfo=BEIJING_STANDARD_TIME).astimezone(UTC)
             events[(JIE_QI_NAMES[event.jqIndex], utc_value)] = None
-    return list(events)
+    return tuple(events)
 
 
 def _build_audit(
@@ -355,6 +358,11 @@ def calculate_chart(payload: BaziCalculationInput) -> BaziCalculationResult:
         payload.day_boundary_rule,
         boundary.nearest_jie,
     )
+    luck_cycles = (
+        calculate_luck_cycles(payload, normalized, values)
+        if payload.gender is not None or payload.luck_direction_override is not None
+        else None
+    )
     status = "audit_failed" if audit.status == "failed" else "ambiguous" if alternatives else "ok"
     result = BaziCalculationResult(
         status=status,
@@ -379,7 +387,9 @@ def calculate_chart(payload: BaziCalculationInput) -> BaziCalculationResult:
         rule_profile=RuleProfile(
             solar_time_mode=payload.solar_time_mode,
             day_boundary=payload.day_boundary_rule,
+            luck_start_rule=payload.luck_start_rule,
         ),
+        luck_cycles=luck_cycles,
         calculation_hash="",
     )
     result.calculation_hash = _calculation_hash(payload, result)

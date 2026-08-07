@@ -8,6 +8,8 @@ export type ApiHealth = {
 
 export type SolarTimeMode = 'civil' | 'mean_solar' | 'apparent_solar';
 export type DayBoundaryRule = 'midnight' | 'late_zi_next_day';
+export type BaziGender = 'male' | 'female';
+export type LuckStartRule = 'precise_minutes' | 'traditional_segments';
 
 export type LocationSearchResult = {
   provider_id: number;
@@ -29,6 +31,9 @@ export type BaziCalculationInput = {
   longitude: number;
   latitude?: number;
   birth_location_name?: string;
+  gender?: BaziGender;
+  luck_direction_override?: 'forward' | 'reverse';
+  luck_start_rule?: LuckStartRule;
   time_accuracy?: 'exact' | 'approximate' | 'hour_only';
   uncertainty_minutes?: number;
   dst_fold?: 0 | 1;
@@ -103,8 +108,47 @@ export type BaziCalculationResult = {
     profile_id: string;
     solar_time_mode: SolarTimeMode;
     day_boundary: DayBoundaryRule;
+    luck_start_rule: LuckStartRule;
   };
+  luck_cycles?: {
+    status: 'ok' | 'audit_failed';
+    user_visible: boolean;
+    direction: 'forward' | 'reverse';
+    direction_basis: string;
+    year_stem_yin_yang: 'yang' | 'yin';
+    start_rule: LuckStartRule;
+    start_boundary: {
+      name: string;
+      boundary_time_utc: string;
+      distance_seconds: number;
+      source: string;
+    };
+    birth_to_boundary_seconds: number;
+    start_age: LuckStartAge;
+    start_at_local: string;
+    periods: Array<{
+      index: number;
+      pillar: BaziPillar;
+      start_at_local: string;
+      end_at_local_exclusive: string;
+      start_age: LuckStartAge;
+    }>;
+    audit: {
+      status: 'passed' | 'failed';
+      primary_engine: string;
+      verification_engine: string;
+      checks: Array<{ name: string; status: 'passed' | 'failed' | 'skipped' }>;
+    };
+  } | null;
   calculation_hash: string;
+};
+
+export type LuckStartAge = {
+  years: number;
+  months: number;
+  days: number;
+  hours: number;
+  decimal_years: number;
 };
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {

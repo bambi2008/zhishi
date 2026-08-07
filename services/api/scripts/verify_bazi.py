@@ -43,6 +43,8 @@ def verify(cases: int, seed: int) -> dict:
                     longitude=longitude,
                     uncertainty_minutes=0,
                     dst_fold=0,
+                    gender="male" if index % 2 else "female",
+                    luck_start_rule="precise_minutes" if index % 3 else "traditional_segments",
                     solar_time_mode=("civil", "mean_solar", "apparent_solar")[index % 3],
                     day_boundary_rule="late_zi_next_day" if index % 2 else "midnight",
                 )
@@ -52,6 +54,10 @@ def verify(cases: int, seed: int) -> dict:
             continue
 
         failed_checks = [check for check in result.audit.checks if check.status == "failed"]
+        if result.luck_cycles:
+            failed_checks.extend(
+                check for check in result.luck_cycles.audit.checks if check.status == "failed"
+            )
         if failed_checks:
             failures.append(
                 {

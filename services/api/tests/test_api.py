@@ -20,6 +20,7 @@ def test_bazi_calculation_endpoint_returns_audited_chart() -> None:
             "local_datetime": "2005-12-23T08:37:00",
             "iana_timezone": "Asia/Shanghai",
             "longitude": 121.4737,
+            "gender": "male",
             "solar_time_mode": "civil",
             "day_boundary_rule": "midnight",
         },
@@ -29,6 +30,8 @@ def test_bazi_calculation_endpoint_returns_audited_chart() -> None:
     assert body["pillars"]["year"]["value"] == "乙酉"
     assert body["pillars"]["hour"]["value"] == "壬辰"
     assert body["audit"]["status"] == "passed"
+    assert body["luck_cycles"]["audit"]["status"] == "passed"
+    assert body["luck_cycles"]["periods"][0]["pillar"]["value"] == "丁亥"
 
 
 def test_location_search_returns_calculation_ready_fields(monkeypatch) -> None:

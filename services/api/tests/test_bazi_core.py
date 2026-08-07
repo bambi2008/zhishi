@@ -111,3 +111,58 @@ def test_ambiguous_dst_time_requires_fold() -> None:
 
 def test_calculation_hash_is_deterministic() -> None:
     assert calculate().calculation_hash == calculate().calculation_hash
+
+
+def test_precise_luck_start_matches_upstream_vector() -> None:
+    result = calculate(
+        local_datetime=datetime(2022, 3, 9, 20, 51),
+        gender="male",
+        luck_start_rule="precise_minutes",
+    )
+    luck = result.luck_cycles
+    assert luck is not None
+    assert luck.direction == "forward"
+    assert (luck.start_age.years, luck.start_age.months, luck.start_age.days, luck.start_age.hours) == (8, 9, 2, 10)
+    assert luck.start_at_local == datetime(2030, 12, 12, 6, 51)
+    assert [item.pillar.value for item in luck.periods[:5]] == ["甲辰", "乙巳", "丙午", "丁未", "戊申"]
+    assert luck.audit.status == "passed"
+
+
+def test_traditional_segment_luck_start_matches_upstream_vector() -> None:
+    result = calculate(
+        local_datetime=datetime(1981, 1, 29, 23, 37),
+        gender="female",
+        luck_start_rule="traditional_segments",
+    )
+    luck = result.luck_cycles
+    assert luck is not None
+    assert luck.direction == "reverse"
+    assert (luck.start_age.years, luck.start_age.months, luck.start_age.days, luck.start_age.hours) == (8, 0, 20, 0)
+    assert luck.start_at_local == datetime(1989, 2, 18, 23, 37)
+    assert [item.pillar.value for item in luck.periods[:5]] == ["戊子", "丁亥", "丙戌", "乙酉", "甲申"]
+
+
+def test_luck_direction_changes_explicitly_with_traditional_gender_rule() -> None:
+    male = calculate(gender="male").luck_cycles
+    female = calculate(gender="female").luck_cycles
+    assert male is not None and female is not None
+    assert male.direction == "reverse"
+    assert female.direction == "forward"
+    assert male.periods[0].pillar.value == "丁亥"
+    assert female.periods[0].pillar.value == "己丑"
+
+
+def test_luck_age_uses_absolute_instant_for_overseas_birth() -> None:
+    shanghai = calculate(
+        local_datetime=datetime(2024, 2, 4, 17, 0),
+        gender="male",
+    ).luck_cycles
+    new_york = calculate(
+        local_datetime=datetime(2024, 2, 4, 4, 0),
+        iana_timezone="America/New_York",
+        longitude=-74.006,
+        gender="male",
+    ).luck_cycles
+    assert shanghai is not None and new_york is not None
+    assert shanghai.start_age == new_york.start_age
+    assert shanghai.start_boundary.boundary_time_utc == new_york.start_boundary.boundary_time_utc

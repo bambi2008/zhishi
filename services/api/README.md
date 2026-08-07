@@ -21,9 +21,11 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
   "longitude": 121.4737,
   "latitude": 31.2304,
   "birth_location_name": "上海",
+  "gender": "male",
   "time_accuracy": "exact",
   "solar_time_mode": "civil",
-  "day_boundary_rule": "midnight"
+  "day_boundary_rule": "midnight",
+  "luck_start_rule": "precise_minutes"
 }
 ```
 
@@ -33,10 +35,12 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 - `iana_timezone` 用于还原历史 UTC 偏移和夏令时。
 - `solar_time_mode` 支持 `civil`、`mean_solar`、`apparent_solar`。
 - `day_boundary_rule` 支持午夜换日和晚子时换日。
+- `gender` 只用于传统大运顺逆：阳年男、阴年女顺行，阴年男、阳年女逆行。也可由受控调用方通过 `luck_direction_override` 显式覆盖。
+- `luck_start_rule` 支持 `precise_minutes`（分钟折算，默认）和 `traditional_segments`（三天一岁、一天四月、一时辰十天）。两者都只数前后“节”，不数“气”。
 - 夏令时结束造成重复时间时，必须通过 `dst_fold` 明确选择第一次或第二次。
 - 当前经过交叉验证的出生年份范围为 1900—2100。
 
-返回结果包含标准化时间、四柱及藏干/五行/十神/纳音、最近节气边界、时间误差备选、双引擎审计和确定性计算哈希。
+返回结果包含标准化时间、四柱及藏干/五行/十神/纳音、最近节气边界、时间误差备选、大运顺逆/起运时刻/八步运柱、双引擎审计和确定性计算哈希。大运同时核对 `lunar_python`、自研折算公式和 `sxtwl` 节气时刻；任一检查失败时停止展示大运，但不影响已经独立通过的四柱。
 
 ## 出生地搜索
 
@@ -60,4 +64,4 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 .venv/Scripts/python scripts/verify_bazi.py --cases 1000 --seed 20260807
 ```
 
-脚本覆盖上海、纽约、伦敦、东京和悉尼，并轮换三种时间模式与两种换日规则。任一双引擎检查失败时以非零状态退出。
+脚本覆盖上海、纽约、伦敦、东京和悉尼，并轮换三种时间模式、两种换日规则、两种起运算法及男女顺逆组合。任一四柱或大运审计失败时以非零状态退出。
