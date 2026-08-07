@@ -11,6 +11,10 @@ def test_health() -> None:
     response = client.get("/health")
     assert response.status_code == 200
     assert response.json()["status"] == "ok"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["referrer-policy"] == "no-referrer"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert "cache-control" not in response.headers
 
 
 def test_bazi_calculation_endpoint_returns_audited_chart() -> None:
@@ -120,10 +124,13 @@ def test_location_search_returns_calculation_ready_fields(monkeypatch) -> None:
         )
 
     monkeypatch.setattr("app.main.search_locations", fake_search)
-    response = client.get("/api/v1/locations/search", params={"q": "上海"})
+    response = client.post("/api/v1/locations/search", json={"query": "上海"})
     assert response.status_code == 200
     assert response.json()[0]["iana_timezone"] == "Asia/Shanghai"
     assert response.json()[0]["longitude"] == 121.45806
+    assert response.headers["cache-control"] == "no-store, max-age=0"
+    assert response.headers["pragma"] == "no-cache"
+    assert response.headers["expires"] == "0"
 
 
 def test_location_provider_failure_is_a_recoverable_503(monkeypatch) -> None:
@@ -131,9 +138,39 @@ def test_location_provider_failure_is_a_recoverable_503(monkeypatch) -> None:
         raise LocationSearchError("地点服务暂时不可用")
 
     monkeypatch.setattr("app.main.search_locations", fail_search)
-    response = client.get("/api/v1/locations/search", params={"q": "上海"})
+    response = client.post("/api/v1/locations/search", json={"query": "上海"})
     assert response.status_code == 503
     assert response.json()["detail"]["code"] == "location_provider_unavailable"
+
+
+def test_location_search_rejects_query_string_transport() -> None:
+    response = client.get("/api/v1/locations/search", params={"q": "上海"})
+    assert response.status_code == 405
+    assert response.headers["cache-control"] == "no-store, max-age=0"
+
+
+def test_cors_preflight_is_limited_to_trusted_origins_and_declared_operations() -> None:
+    allowed = client.options(
+        "/api/v1/locations/search",
+        headers={
+            "Origin": "http://127.0.0.1:8081",
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
+    assert allowed.status_code == 200
+    assert allowed.headers["access-control-allow-origin"] == "http://127.0.0.1:8081"
+    assert allowed.headers["access-control-allow-methods"] == "GET, POST, OPTIONS"
+    assert allowed.headers["cache-control"] == "no-store, max-age=0"
+
+    untrusted = client.options(
+        "/api/v1/locations/search",
+        headers={
+            "Origin": "https://attacker.example",
+            "Access-Control-Request-Method": "POST",
+        },
+    )
+    assert "access-control-allow-origin" not in untrusted.headers
 
 
 def test_onboarding_and_guidance_have_evidence_chain() -> None:

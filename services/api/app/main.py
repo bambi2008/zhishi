@@ -1,8 +1,9 @@
 from __future__ import annotations
 
+import os
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 
 from .bazi import (
@@ -14,7 +15,7 @@ from .bazi import (
     calculate_current_context,
 )
 from .bazi.solar_time import TimeNormalizationError
-from .locations import LocationSearchError, LocationSearchResult, search_locations
+from .locations import LocationSearchError, LocationSearchInput, LocationSearchResult, search_locations
 from .models import (
     Action,
     AnxietySession,
@@ -34,18 +35,46 @@ from .models import (
 from .store import store
 
 app = FastAPI(title="知时 API", version="0.1.0", description="东方人生导航 MVP 的结构化 API 骨架。")
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
+
+
+def configured_cors_origins() -> list[str]:
+    local_origins = (
         "http://127.0.0.1:4173",
         "http://localhost:4173",
         "http://127.0.0.1:8081",
         "http://localhost:8081",
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    )
+    configured = tuple(
+        origin.strip().rstrip("/")
+        for origin in os.getenv("ZHISHI_CORS_ORIGINS", "").split(",")
+        if origin.strip()
+    )
+    if "*" in configured:
+        raise RuntimeError("ZHISHI_CORS_ORIGINS must list exact trusted origins; wildcard is not allowed.")
+    return list(dict.fromkeys((*local_origins, *configured)))
+
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=configured_cors_origins(),
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Accept", "Content-Type"],
 )
+
+
+@app.middleware("http")
+async def add_privacy_and_security_headers(request: Request, call_next):
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+    if request.url.path.startswith("/api/v1/"):
+        response.headers["Cache-Control"] = "no-store, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 
 def get_user(user_id: UUID) -> UserProfile:
@@ -100,14 +129,10 @@ def calculate_bazi_current_context(payload: BaziCurrentContextInput) -> BaziCurr
         ) from exc
 
 
-@app.get("/api/v1/locations/search", response_model=list[LocationSearchResult])
-def search_birth_locations(
-    q: str = Query(min_length=2, max_length=80),
-    language: str = Query(default="zh", pattern=r"^[a-z]{2}$"),
-    limit: int = Query(default=6, ge=1, le=10),
-) -> tuple[LocationSearchResult, ...]:
+@app.post("/api/v1/locations/search", response_model=list[LocationSearchResult])
+def search_birth_locations(payload: LocationSearchInput) -> tuple[LocationSearchResult, ...]:
     try:
-        return search_locations(q, language, limit)
+        return search_locations(payload.query, payload.language, payload.limit)
     except LocationSearchError as exc:
         raise HTTPException(
             status_code=503,

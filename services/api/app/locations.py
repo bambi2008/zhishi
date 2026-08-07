@@ -17,6 +17,12 @@ class LocationSearchError(RuntimeError):
     """Raised when the location provider cannot return trustworthy results."""
 
 
+class LocationSearchInput(BaseModel):
+    query: str = Field(min_length=2, max_length=80)
+    language: str = Field(default="zh", pattern=r"^[a-z]{2}$")
+    limit: int = Field(default=6, ge=1, le=10)
+
+
 class LocationSearchResult(BaseModel):
     provider_id: int
     name: str

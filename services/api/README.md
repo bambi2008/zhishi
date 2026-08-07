@@ -67,9 +67,19 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 
 ## 出生地搜索
 
-`GET /api/v1/locations/search?q=上海&language=zh&limit=6`
+`POST /api/v1/locations/search`
+
+```json
+{
+  "query": "上海",
+  "language": "zh",
+  "limit": 6
+}
+```
 
 接口返回地点显示名、WGS84 经纬度和 IANA 时区，供排盘输入使用。默认 MVP 提供方为 Open-Meteo Geocoding，底层地点数据来自 GeoNames；生产商业环境应设置 `OPEN_METEO_API_KEY`，或通过 `ZHISHI_GEOCODING_URL` 指向已授权/自托管的兼容服务。地点服务失败时返回可恢复的 `503`，客户端仍允许手动填写时区和经度。
+
+地点搜索词只放在 POST 请求体中，不进入 URL 查询字符串，避免普通访问日志记录出生地点。所有 `/api/v1/` 响应（包括错误和预检响应）均发送 `Cache-Control: no-store`；生产环境不得开启请求体日志。Web 客户端的精确可信来源通过逗号分隔的 `ZHISHI_CORS_ORIGINS` 配置，不接受 `*` 通配符；原生 iOS/Android 客户端不依赖浏览器 CORS。
 
 ## 引擎与边界策略
 

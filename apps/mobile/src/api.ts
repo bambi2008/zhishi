@@ -216,8 +216,11 @@ export function getApiHealth(): Promise<ApiHealth> {
 }
 
 export function searchBirthLocations(query: string, signal?: AbortSignal): Promise<LocationSearchResult[]> {
-  const params = new URLSearchParams({ q: query, language: 'zh', limit: '6' });
-  return request<LocationSearchResult[]>(`/api/v1/locations/search?${params.toString()}`, { signal });
+  return request<LocationSearchResult[]>('/api/v1/locations/search', {
+    method: 'POST',
+    body: JSON.stringify({ query, language: 'zh', limit: 6 }),
+    signal,
+  });
 }
 
 export function calculateBaziChart(payload: BaziCalculationInput): Promise<BaziCalculationResult> {
