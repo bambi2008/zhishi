@@ -372,10 +372,11 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       <Segmented label="传统排运性别" options={genderOptions} value={gender} onChange={setGender} />
       <Text style={styles.ruleHint}>仅用于“阳年男/阴年女顺，阴年男/阳年女逆”的传统排运规则，不用于判断性别身份。</Text>
       <Segmented label="起运算法" options={luckStartRules} value={luckStartRule} onChange={setLuckStartRule} />
+      <View style={styles.inputNoticeCard}><Text style={styles.inputNoticeTitle}>提交前隐私提示</Text><Text style={styles.inputNoticeText}>点击排盘后，出生资料会发送到配置的计算 API。当前 MVP 不主动保存计算请求，也不销售数据或用于行为广告；只有你主动点击“保存”后，命盘才会写入本机。请仅填写本人或已获授权的资料。</Text></View>
       {error ? <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View> : null}
       <Pressable disabled={loading} onPress={submit} style={({ pressed }) => [styles.calculateButton, pressed && styles.pressed, loading && styles.disabled]}>{loading ? <ActivityIndicator color="#FFF" /> : <><Text style={styles.calculateText}>{result ? '重新计算' : '开始排盘'}</Text><Text style={styles.calculateArrow}>→</Text></>}</Pressable>
       {result?.user_visible ? <><ResultView result={result} currentContext={currentContext} contextLoading={contextLoading} /><View style={styles.storageCard}><View style={{ flex: 1 }}><Text style={styles.storageTitle}>{savedAt ? '命盘已保存在本机' : '保存这张命盘'}</Text><Text style={styles.storageText}>{savedAt ? formatSavedAt(savedAt) : '仅在你明确操作后保存；数据不会自动上传账户。'}</Text>{storageMessage ? <Text style={styles.storageMessage}>{storageMessage}</Text> : null}</View><Pressable onPress={savedAt ? clearSavedChart : saveChart} style={styles.storageButton}><Text style={styles.storageButtonText}>{savedAt ? '清除' : '保存'}</Text></Pressable></View></> : null}
-      <Text style={styles.disclaimer}>排盘依据你提交的出生日期、时间、地点和规则选项生成。出生时间不准确可能改变结果；非精确时间仍会正常计算。命盘属于传统文化参考，不替代医疗、法律、财务或其他专业判断。详见“安全与使用条款”。</Text>
+      <Text style={styles.disclaimer}>排盘依据你提交的出生日期、时间、地点和规则选项生成。出生时间不准确可能改变结果；非精确时间仍会正常计算。命盘属于传统文化参考，不替代医疗、法律、财务或其他专业判断。详见“安全、隐私与使用条款”。</Text>
     </ScrollView>
   </View>;
 }

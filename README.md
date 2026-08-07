@@ -39,7 +39,7 @@ python -m uvicorn app.main:app --reload --port 8000
 
 真实排盘接口：`POST /api/v1/bazi/charts/calculate`；当前大运与流年接口：`POST /api/v1/bazi/context/current`。详细输入、规则和验证方式见 [`services/api/README.md`](services/api/README.md)。
 
-产品上线前的法务与隐私复核草案见 [`LEGAL_NOTICE.md`](LEGAL_NOTICE.md)。该文件用于产品设计，不替代目标运营地区执业律师的正式意见。
+欧美上线内部法务基线见 [`LEGAL_NOTICE.md`](LEGAL_NOTICE.md)，客户侧英文草案见 [`TERMS_OF_USE.md`](TERMS_OF_USE.md) 与 [`PRIVACY_NOTICE.md`](PRIVACY_NOTICE.md)。这些文件用于产品设计和律师交接，不替代美国、欧盟/欧洲经济区及英国执业律师的正式意见。
 
 移动端：
 

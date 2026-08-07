@@ -26,4 +26,6 @@ npm run ios
 
 命盘不会自动持久化。用户点击“保存”后，出生资料和计算结果通过 AsyncStorage 保存在当前设备；这属于未加密设备存储，不应用于共享设备。后续接入账户同步时应改用服务端加密存储和明确的删除机制。
 
+出生资料提交前会显示美国与欧洲隐私基线提示：当前 MVP 的计算 API 不主动持久化请求，不销售数据、不投放行为广告；仅在用户主动点击“保存”后写入本机。完整欧美上线草案见根目录 `TERMS_OF_USE.md`、`PRIVACY_NOTICE.md` 和内部 `LEGAL_NOTICE.md`。
+
 Windows 可以开发 Android / Expo Go；iOS 原生编译需要 macOS + Xcode。
