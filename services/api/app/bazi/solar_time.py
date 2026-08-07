@@ -2,10 +2,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from functools import lru_cache
+from importlib.metadata import version
+from importlib.resources import files
 from math import cos, degrees, radians, sin, tan
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from zoneinfo import ZoneInfo
 
 from .models import SolarTimeMode
+
+
+TIMEZONE_DATABASE_VERSION = f"tzdata@{version('tzdata')}"
 
 
 class TimeNormalizationError(ValueError):
@@ -33,11 +39,28 @@ def _round_trip_is_valid(local_naive: datetime, aware: datetime, zone: ZoneInfo)
     return round_trip.replace(tzinfo=None) == local_naive
 
 
-def localize_wall_time(local_naive: datetime, timezone_name: str, dst_fold: int | None) -> datetime:
+@lru_cache(maxsize=256)
+def load_timezone(timezone_name: str) -> ZoneInfo:
+    """Load an IANA zone only from the pinned first-party tzdata package."""
+    parts = timezone_name.split("/")
+    if (
+        not timezone_name
+        or timezone_name.startswith("/")
+        or "\\" in timezone_name
+        or any(not part or part in {".", ".."} for part in parts)
+    ):
+        raise TimeNormalizationError("timezone_not_found", f"未知 IANA 时区：{timezone_name}")
+
     try:
-        zone = ZoneInfo(timezone_name)
-    except ZoneInfoNotFoundError as exc:
+        resource = files("tzdata.zoneinfo").joinpath(*parts)
+        with resource.open("rb") as zone_file:
+            return ZoneInfo.from_file(zone_file, key=timezone_name)
+    except (FileNotFoundError, IsADirectoryError, OSError, ValueError) as exc:
         raise TimeNormalizationError("timezone_not_found", f"未知 IANA 时区：{timezone_name}") from exc
+
+
+def localize_wall_time(local_naive: datetime, timezone_name: str, dst_fold: int | None) -> datetime:
+    zone = load_timezone(timezone_name)
 
     fold_zero = local_naive.replace(tzinfo=zone, fold=0)
     fold_one = local_naive.replace(tzinfo=zone, fold=1)

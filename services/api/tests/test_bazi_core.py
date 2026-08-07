@@ -11,7 +11,12 @@ from app.bazi import (
     calculate_chart,
     calculate_current_context,
 )
-from app.bazi.solar_time import TimeNormalizationError, normalize_birth_time
+from app.bazi.solar_time import (
+    TIMEZONE_DATABASE_VERSION,
+    TimeNormalizationError,
+    load_timezone,
+    normalize_birth_time,
+)
 
 
 def calculate(**overrides):
@@ -41,6 +46,23 @@ def test_known_four_pillar_vector_passes_dual_engine_audit() -> None:
     assert result.status == "ok"
     assert result.audit.status == "passed"
     assert result.user_visible is True
+    assert result.rule_profile.timezone_database == "tzdata@2026.3"
+
+
+def test_timezone_loader_is_pinned_and_cached_across_platforms() -> None:
+    first = load_timezone("America/New_York")
+    second = load_timezone("America/New_York")
+
+    assert first is second
+    assert first.key == "America/New_York"
+    assert TIMEZONE_DATABASE_VERSION == "tzdata@2026.3"
+
+
+@pytest.mark.parametrize("timezone_name", ["../UTC", "America//New_York", "C:\\Windows"])
+def test_timezone_loader_rejects_non_iana_paths(timezone_name: str) -> None:
+    with pytest.raises(TimeNormalizationError) as exc:
+        load_timezone(timezone_name)
+    assert exc.value.code == "timezone_not_found"
 
 
 def test_exact_lichun_boundary_uses_handoff_time_not_calendar_day() -> None:

@@ -107,6 +107,7 @@ export type BaziCalculationResult = {
   };
   rule_profile: {
     profile_id: string;
+    timezone_database: string;
     solar_time_mode: SolarTimeMode;
     day_boundary: DayBoundaryRule;
     luck_start_rule: LuckStartRule;

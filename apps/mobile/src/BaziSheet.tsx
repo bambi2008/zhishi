@@ -168,7 +168,7 @@ function ResultView({ result, currentContext, contextLoading }: { result: BaziCa
     {result.boundary.risk !== 'none' && <View style={styles.warningCard}><Text style={styles.warningTitle}>边界提醒</Text>{result.boundary.notes.map(note => <Text key={note} style={styles.warningText}>• {note}</Text>)}</View>}
     {result.alternatives.length > 0 && <View style={styles.alternativeCard}><Text style={styles.factTitle}>出生时间误差可能产生的结果</Text>{result.alternatives.map(item => <Text key={item.label} style={styles.alternativeText}>{item.label === 'earliest' ? '最早' : '最晚'}：{item.year} {item.month} {item.day} {item.hour}</Text>)}</View>}
     <LuckCycleView result={result} currentContext={currentContext} contextLoading={contextLoading} />
-    <Text style={styles.engineMeta}>{result.audit.primary_engine} × {result.audit.verification_engine} · {result.calculation_hash.slice(0, 12)}</Text>
+    <Text style={styles.engineMeta}>{result.audit.primary_engine} × {result.audit.verification_engine} · {result.rule_profile.timezone_database} · {result.calculation_hash.slice(0, 12)}</Text>
   </View>;
 }
 

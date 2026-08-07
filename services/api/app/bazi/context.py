@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from functools import lru_cache
-from zoneinfo import ZoneInfo
 
 from lunar_python import Solar
 from lunar_python.util import LunarUtil
@@ -27,6 +26,7 @@ from .models import (
     MonthlyCycleContext,
     PillarDetails,
 )
+from .solar_time import load_timezone
 
 
 MONTH_SEQUENCE = (
@@ -255,7 +255,7 @@ def _build_audit(
 def calculate_current_context(payload: BaziCurrentContextInput) -> BaziCurrentContextResult:
     chart = calculate_chart(payload.chart)
     as_of_utc = payload.as_of_utc.astimezone(UTC)
-    as_of_local = as_of_utc.astimezone(ZoneInfo(payload.chart.iana_timezone))
+    as_of_local = as_of_utc.astimezone(load_timezone(payload.chart.iana_timezone))
     current_luck = _current_luck_context(chart, as_of_local.replace(tzinfo=None))
     start_boundary, end_boundary = _lichun_window(as_of_utc)
     month_start_boundary, month_end_boundary = _primary_jie_candidates(as_of_utc)

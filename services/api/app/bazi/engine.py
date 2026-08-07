@@ -23,7 +23,12 @@ from .models import (
     PillarDetails,
     RuleProfile,
 )
-from .solar_time import NormalizedTimeValues, TimeNormalizationError, normalize_birth_time
+from .solar_time import (
+    TIMEZONE_DATABASE_VERSION,
+    NormalizedTimeValues,
+    TimeNormalizationError,
+    normalize_birth_time,
+)
 
 
 PRIMARY_ENGINE_VERSION = "lunar_python@1.4.8"
@@ -385,6 +390,7 @@ def calculate_chart(payload: BaziCalculationInput) -> BaziCalculationResult:
         alternatives=alternatives,
         audit=audit,
         rule_profile=RuleProfile(
+            timezone_database=TIMEZONE_DATABASE_VERSION,
             solar_time_mode=payload.solar_time_mode,
             day_boundary=payload.day_boundary_rule,
             luck_start_rule=payload.luck_start_rule,

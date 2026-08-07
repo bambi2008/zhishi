@@ -3,10 +3,11 @@ from __future__ import annotations
 from functools import lru_cache
 import os
 from typing import Any, Literal
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import httpx
 from pydantic import BaseModel, Field
+
+from .bazi.solar_time import TimeNormalizationError, load_timezone
 
 
 DEFAULT_GEOCODING_URL = "https://geocoding-api.open-meteo.com/v1/search"
@@ -89,8 +90,8 @@ def search_locations(query: str, language: str = "zh", limit: int = 6) -> tuple[
     for item in payload.get("results") or []:
         timezone = str(item.get("timezone") or "").strip()
         try:
-            ZoneInfo(timezone)
-        except (ZoneInfoNotFoundError, ValueError):
+            load_timezone(timezone)
+        except TimeNormalizationError:
             continue
 
         try:

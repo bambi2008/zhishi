@@ -85,7 +85,7 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 
 - 主引擎：`lunar_python==1.4.8`
 - 校验引擎：`sxtwl==2.0.7`
-- 时区数据：`tzdata==2026.3`
+- 时区数据：`tzdata==2026.3`；核心通过包内 TZif 文件加载，不读取 Linux/容器宿主机的系统时区库，版本写入 `rule_profile.timezone_database` 与计算哈希
 - 年柱：立春精确交接时刻
 - 月柱：十二节精确交接时刻
 - 年/月按出生绝对时刻判断，日/时按所选当地时间模式判断

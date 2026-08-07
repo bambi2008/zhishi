@@ -122,6 +122,7 @@ class AlternativeChart(BaseModel):
 
 class RuleProfile(BaseModel):
     profile_id: str = "zhishi-standard-v1"
+    timezone_database: str
     year_boundary: Literal["exact_lichun"] = "exact_lichun"
     month_boundary: Literal["exact_jie"] = "exact_jie"
     solar_time_mode: SolarTimeMode
