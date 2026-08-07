@@ -294,9 +294,12 @@ def calculate_current_context(payload: BaziCurrentContextInput) -> BaziCurrentCo
         chart,
         current_luck,
     )
-    visible = chart.user_visible and audit.status == "passed"
+    ambiguous = chart.status == "ambiguous" or (
+        chart.luck_cycles is not None and chart.luck_cycles.status == "ambiguous"
+    )
+    visible = chart.user_visible and not ambiguous and audit.status == "passed"
     return BaziCurrentContextResult(
-        status="ok" if visible else "audit_failed",
+        status="ok" if visible else "ambiguous" if ambiguous else "audit_failed",
         user_visible=visible,
         as_of_utc=as_of_utc,
         as_of_local=as_of_local,

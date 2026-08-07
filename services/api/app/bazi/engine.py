@@ -363,6 +363,9 @@ def calculate_chart(payload: BaziCalculationInput) -> BaziCalculationResult:
         if payload.gender is not None or payload.luck_direction_override is not None
         else None
     )
+    cycle_input_uncertain = payload.time_accuracy != "exact" or (payload.uncertainty_minutes or 0) > 1
+    if luck_cycles is not None and (alternatives or cycle_input_uncertain):
+        luck_cycles = luck_cycles.model_copy(update={"status": "ambiguous", "user_visible": False})
     status = "audit_failed" if audit.status == "failed" else "ambiguous" if alternatives else "ok"
     result = BaziCalculationResult(
         status=status,

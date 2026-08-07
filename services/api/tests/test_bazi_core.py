@@ -265,3 +265,28 @@ def test_current_context_requires_aware_as_of_time() -> None:
     )
     with pytest.raises(ValueError, match="as_of_utc"):
         BaziCurrentContextInput(chart=chart, as_of_utc=datetime(2026, 8, 7))
+
+
+def test_uncertain_birth_time_hides_single_luck_and_current_cycle() -> None:
+    chart_input = BaziCalculationInput(
+        local_datetime=datetime(2005, 12, 23, 8, 37),
+        iana_timezone="Asia/Shanghai",
+        longitude=121.4737,
+        gender="male",
+        time_accuracy="approximate",
+        solar_time_mode="civil",
+        day_boundary_rule="midnight",
+    )
+    chart = calculate_chart(chart_input)
+    context = calculate_current_context(
+        BaziCurrentContextInput(chart=chart_input, as_of_utc=datetime(2026, 8, 7, tzinfo=UTC))
+    )
+
+    assert chart.status == "ambiguous"
+    assert chart.user_visible is True
+    assert chart.alternatives
+    assert chart.luck_cycles is not None
+    assert chart.luck_cycles.status == "ambiguous"
+    assert chart.luck_cycles.user_visible is False
+    assert context.status == "ambiguous"
+    assert context.user_visible is False

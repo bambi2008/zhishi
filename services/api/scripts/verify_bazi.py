@@ -30,6 +30,7 @@ def verify(cases: int, seed: int) -> dict:
     failures: list[dict] = []
     context_statuses = {"pre_luck": 0, "active": 0, "out_of_range": 0}
     skipped = 0
+    uncertain_inputs = 0
     started = time.perf_counter()
 
     for index in range(cases):
@@ -41,11 +42,15 @@ def verify(cases: int, seed: int) -> dict:
             second=randomizer.randrange(60),
         )
         try:
+            time_accuracy = "approximate" if index % 4 == 0 else "exact"
+            if time_accuracy != "exact":
+                uncertain_inputs += 1
             chart_input = BaziCalculationInput(
                 local_datetime=wall_time,
                 iana_timezone=timezone_name,
                 longitude=longitude,
-                uncertainty_minutes=0,
+                time_accuracy=time_accuracy,
+                uncertainty_minutes=30 if time_accuracy == "approximate" else 0,
                 dst_fold=0,
                 gender="male" if index % 2 else "female",
                 luck_start_rule="precise_minutes" if index % 3 else "traditional_segments",
@@ -63,6 +68,27 @@ def verify(cases: int, seed: int) -> dict:
             continue
 
         context_statuses[context.current_luck.status] += 1
+        if time_accuracy != "exact" and (
+            context.status != "ambiguous"
+            or context.user_visible
+            or result.luck_cycles is None
+            or result.luck_cycles.user_visible
+        ):
+            failures.append(
+                {
+                    "wall_time": wall_time.isoformat(),
+                    "as_of_utc": as_of_utc.isoformat(),
+                    "timezone": timezone_name,
+                    "checks": [
+                        {
+                            "name": "uncertain_cycle_fail_closed",
+                            "primary": context.status,
+                            "verification": "ambiguous and hidden",
+                        }
+                    ],
+                }
+            )
+            continue
         failed_checks = [check for check in result.audit.checks if check.status == "failed"]
         if result.luck_cycles:
             failed_checks.extend(
@@ -90,6 +116,7 @@ def verify(cases: int, seed: int) -> dict:
         "cases": cases,
         "evaluated": cases - skipped,
         "skipped_invalid_wall_times": skipped,
+        "uncertain_inputs": uncertain_inputs,
         "current_luck_statuses": context_statuses,
         "failures": len(failures),
         "failure_samples": failures[:10],

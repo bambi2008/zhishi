@@ -78,6 +78,31 @@ def test_bazi_current_context_rejects_naive_as_of_time() -> None:
     assert response.status_code == 422
 
 
+def test_bazi_context_fails_closed_for_approximate_birth_time() -> None:
+    response = client.post(
+        "/api/v1/bazi/context/current",
+        json={
+            "chart": {
+                "local_datetime": "2005-12-23T08:37:00",
+                "iana_timezone": "Asia/Shanghai",
+                "longitude": 121.4737,
+                "gender": "male",
+                "time_accuracy": "approximate",
+                "solar_time_mode": "civil",
+                "day_boundary_rule": "midnight",
+            },
+            "as_of_utc": "2026-08-07T00:00:00Z",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["status"] == "ambiguous"
+    assert body["user_visible"] is False
+    assert body["chart"]["user_visible"] is True
+    assert body["chart"]["luck_cycles"]["status"] == "ambiguous"
+    assert body["chart"]["luck_cycles"]["user_visible"] is False
+
+
 def test_location_search_returns_calculation_ready_fields(monkeypatch) -> None:
     def fake_search(query: str, language: str, limit: int):
         assert (query, language, limit) == ("上海", "zh", 6)

@@ -32,6 +32,7 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 关键输入规则：
 
 - `local_datetime` 是出生地钟表显示时间，不能附带 UTC 偏移。
+- `time_accuracy` 支持 `exact`、`approximate` 和 `hour_only`，默认误差分别为 ±1、±30、±60 分钟；也可用 `uncertainty_minutes` 显式指定 0—120 分钟。
 - `iana_timezone` 用于还原历史 UTC 偏移和夏令时。
 - `solar_time_mode` 支持 `civil`、`mean_solar`、`apparent_solar`。
 - `day_boundary_rule` 支持午夜换日和晚子时换日。
@@ -41,6 +42,8 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 - 当前经过交叉验证的出生年份范围为 1900—2100。
 
 返回结果包含标准化时间、四柱及藏干/五行/十神/纳音、最近节气边界、时间误差备选、大运顺逆/起运时刻/八步运柱、双引擎审计和确定性计算哈希。大运同时核对 `lunar_python`、自研折算公式和 `sxtwl` 节气时刻；任一检查失败时停止展示大运，但不影响已经独立通过的四柱。
+
+非精确出生时间不会被中点值伪装成唯一周期：四柱仍返回主结果及区间端点候选，但大运标记为 `ambiguous` 并停止展示单一结果；当前大运、流年和流月上下文同样 fail-closed。后续只有在实现完整的区间传播后，才可恢复周期范围展示。
 
 ## 当前大运与流年
 
@@ -86,4 +89,4 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 .venv/Scripts/python scripts/verify_bazi.py --cases 1000 --seed 20260807
 ```
 
-脚本覆盖上海、纽约、伦敦、东京和悉尼，并轮换三种时间模式、两种换日规则、两种起运算法及男女顺逆组合；随机 `as_of_utc` 同时覆盖起运前、运中和八步运后。任一四柱、大运、立春流年或十二节流月审计失败时以非零状态退出。
+脚本覆盖上海、纽约、伦敦、东京和悉尼，并轮换三种时间模式、两种换日规则、两种起运算法、男女顺逆及精确/非精确出生时间；随机 `as_of_utc` 同时覆盖起运前、运中和八步运后。任一四柱、大运、立春流年、十二节流月审计或不确定性 fail-closed 合约失败时以非零状态退出。

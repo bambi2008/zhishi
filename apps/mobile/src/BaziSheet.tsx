@@ -14,6 +14,7 @@ import {
   BaziCalculationResult,
   BaziCurrentContextResult,
   BaziGender,
+  BaziTimeAccuracy,
   DayBoundaryRule,
   LocationSearchResult,
   LuckStartRule,
@@ -59,6 +60,12 @@ const genderOptions: Array<[BaziGender | '', string]> = [
 const luckStartRules: Array<[LuckStartRule, string]> = [
   ['precise_minutes', '分钟精算'],
   ['traditional_segments', '传统折算'],
+];
+
+const timeAccuracyOptions: Array<[BaziTimeAccuracy, string]> = [
+  ['exact', '精确'],
+  ['approximate', '约 ±30 分'],
+  ['hour_only', '约 ±60 分'],
 ];
 
 function validLocalDateTime(date: string, time: string): boolean {
@@ -111,7 +118,7 @@ function LuckCycleView({ result, currentContext, contextLoading }: { result: Baz
   const luck = result.luck_cycles;
   if (!luck) return null;
   if (!luck.user_visible) {
-    return <View style={styles.warningCard}><Text style={styles.warningTitle}>大运校验未通过</Text><Text style={styles.warningText}>大运结果已停止展示，四柱仍可独立查看。</Text></View>;
+    return <View style={styles.warningCard}><Text style={styles.warningTitle}>{luck.status === 'ambiguous' ? '出生时间精度不足，周期暂停展示' : '大运校验未通过'}</Text><Text style={styles.warningText}>{luck.status === 'ambiguous' ? '四柱候选仍可查看；在起运日期和当前周期无法唯一确定前，不展示单一大运、流年或流月。' : '大运结果已停止展示，四柱仍可独立查看。'}</Text></View>;
   }
   const current = currentContext?.current_luck;
   const activeIndex = current?.current_period?.index;
@@ -180,6 +187,7 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
   const [dayRule, setDayRule] = useState<DayBoundaryRule>('midnight');
   const [gender, setGender] = useState<BaziGender | ''>('');
   const [luckStartRule, setLuckStartRule] = useState<LuckStartRule>('precise_minutes');
+  const [timeAccuracy, setTimeAccuracy] = useState<BaziTimeAccuracy>('exact');
   const [result, setResult] = useState<BaziCalculationResult | null>(null);
   const [currentContext, setCurrentContext] = useState<BaziCurrentContextResult | null>(null);
   const [contextLoading, setContextLoading] = useState(false);
@@ -205,6 +213,7 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       setDayRule(stored.input.day_boundary_rule);
       setGender(stored.input.gender ?? '');
       setLuckStartRule(stored.input.luck_start_rule ?? 'precise_minutes');
+      setTimeAccuracy(stored.input.time_accuracy ?? 'exact');
       setLastInput(stored.input);
       setResult(stored.result);
       setSavedAt(stored.saved_at);
@@ -301,7 +310,7 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
         birth_location_name: locationName.trim(),
         gender,
         luck_start_rule: luckStartRule,
-        time_accuracy: 'exact',
+        time_accuracy: timeAccuracy,
         solar_time_mode: solarMode,
         day_boundary_rule: dayRule,
       };
@@ -349,6 +358,8 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={styles.eyebrow}>出生资料</Text><Text style={styles.title}>先把时间算对，再谈解释。</Text><Text style={styles.subtitle}>出生时间按当地钟表填写。系统会处理历史时区、经度、均时差和节气边界。</Text>
       <View style={styles.twoColumns}><Field label="出生日期" value={birthDate} onChangeText={setBirthDate} placeholder="1990-06-15" /><Field label="出生时间" value={birthTime} onChangeText={setBirthTime} placeholder="23:30" /></View>
+      <Segmented label="出生时间精度" options={timeAccuracyOptions} value={timeAccuracy} onChange={setTimeAccuracy} />
+      <Text style={styles.ruleHint}>不确定时请如实选择。系统会计算时间区间；若出现多个候选命盘，就暂停单一周期结论。</Text>
       <Field label="出生地" value={locationName} onChangeText={changeLocationName} placeholder="输入城市，例如：上海 / Vancouver" autoCapitalize="none" />
       {locationSearching ? <View style={styles.locationStatus}><ActivityIndicator size="small" color={colors.sage} /><Text style={styles.locationStatusText}>正在识别时区与经纬度…</Text></View> : null}
       {locationResults.length > 0 ? <View style={styles.locationResults}>{locationResults.map(item => <Pressable key={item.provider_id} onPress={() => chooseLocation(item)} style={({ pressed }) => [styles.locationResult, pressed && styles.pressed]}><View style={{ flex: 1 }}><Text style={styles.locationName}>{item.display_name}</Text><Text style={styles.locationMeta}>{item.iana_timezone} · {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}</Text></View><Text style={styles.locationArrow}>→</Text></Pressable>)}<Text style={styles.attribution}>地点数据：Open-Meteo / GeoNames</Text></View> : null}

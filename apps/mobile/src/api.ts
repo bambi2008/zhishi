@@ -10,6 +10,7 @@ export type SolarTimeMode = 'civil' | 'mean_solar' | 'apparent_solar';
 export type DayBoundaryRule = 'midnight' | 'late_zi_next_day';
 export type BaziGender = 'male' | 'female';
 export type LuckStartRule = 'precise_minutes' | 'traditional_segments';
+export type BaziTimeAccuracy = 'exact' | 'approximate' | 'hour_only';
 
 export type LocationSearchResult = {
   provider_id: number;
@@ -34,7 +35,7 @@ export type BaziCalculationInput = {
   gender?: BaziGender;
   luck_direction_override?: 'forward' | 'reverse';
   luck_start_rule?: LuckStartRule;
-  time_accuracy?: 'exact' | 'approximate' | 'hour_only';
+  time_accuracy?: BaziTimeAccuracy;
   uncertainty_minutes?: number;
   dst_fold?: 0 | 1;
   solar_time_mode: SolarTimeMode;
@@ -111,7 +112,7 @@ export type BaziCalculationResult = {
     luck_start_rule: LuckStartRule;
   };
   luck_cycles?: {
-    status: 'ok' | 'audit_failed';
+    status: 'ok' | 'ambiguous' | 'audit_failed';
     user_visible: boolean;
     direction: 'forward' | 'reverse';
     direction_basis: string;
@@ -160,7 +161,7 @@ export type LuckPeriod = {
 };
 
 export type BaziCurrentContextResult = {
-  status: 'ok' | 'audit_failed';
+  status: 'ok' | 'ambiguous' | 'audit_failed';
   user_visible: boolean;
   as_of_utc: string;
   as_of_local: string;
