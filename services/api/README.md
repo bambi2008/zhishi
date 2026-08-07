@@ -42,6 +42,26 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 
 返回结果包含标准化时间、四柱及藏干/五行/十神/纳音、最近节气边界、时间误差备选、大运顺逆/起运时刻/八步运柱、双引擎审计和确定性计算哈希。大运同时核对 `lunar_python`、自研折算公式和 `sxtwl` 节气时刻；任一检查失败时停止展示大运，但不影响已经独立通过的四柱。
 
+## 当前大运与流年
+
+`POST /api/v1/bazi/context/current`
+
+```json
+{
+  "chart": {
+    "local_datetime": "2005-12-23T08:37:00",
+    "iana_timezone": "Asia/Shanghai",
+    "longitude": 121.4737,
+    "gender": "male",
+    "solar_time_mode": "civil",
+    "day_boundary_rule": "midnight"
+  },
+  "as_of_utc": "2026-08-07T00:00:00Z"
+}
+```
+
+`as_of_utc` 必须带 UTC 偏移，避免服务器时区造成隐式变化。接口一次返回稳定命盘、当前所在大运、下一步大运及交接时刻、当前流年和前后两个精确立春边界。当前状态不写入命盘计算哈希；同一输入和同一 `as_of_utc` 可复现同一结果。流年同时核对主引擎年柱、1984 甲子基准公式及 `sxtwl` 立春时刻，任一审计失败时停止展示当前周期。
+
 ## 出生地搜索
 
 `GET /api/v1/locations/search?q=上海&language=zh&limit=6`
@@ -57,6 +77,7 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 - 月柱：十二节精确交接时刻
 - 年/月按出生绝对时刻判断，日/时按所选当地时间模式判断
 - `sxtwl` 在节气当天的直接年/月接口不参与裁决，改为校验其节气儒略日
+- 流年按精确立春时刻切换，不按公历元旦或立春整日切换
 
 ## 确定性压力验算
 
@@ -64,4 +85,4 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 .venv/Scripts/python scripts/verify_bazi.py --cases 1000 --seed 20260807
 ```
 
-脚本覆盖上海、纽约、伦敦、东京和悉尼，并轮换三种时间模式、两种换日规则、两种起运算法及男女顺逆组合。任一四柱或大运审计失败时以非零状态退出。
+脚本覆盖上海、纽约、伦敦、东京和悉尼，并轮换三种时间模式、两种换日规则、两种起运算法及男女顺逆组合；随机 `as_of_utc` 同时覆盖起运前、运中和八步运后。任一四柱、大运或立春流年审计失败时以非零状态退出。

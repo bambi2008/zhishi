@@ -151,6 +151,40 @@ export type LuckStartAge = {
   decimal_years: number;
 };
 
+export type LuckPeriod = {
+  index: number;
+  pillar: BaziPillar;
+  start_at_local: string;
+  end_at_local_exclusive: string;
+  start_age: LuckStartAge;
+};
+
+export type BaziCurrentContextResult = {
+  status: 'ok' | 'audit_failed';
+  user_visible: boolean;
+  as_of_utc: string;
+  as_of_local: string;
+  chart: BaziCalculationResult;
+  current_luck: {
+    status: 'pre_luck' | 'active' | 'out_of_range';
+    current_period?: LuckPeriod | null;
+    next_period?: LuckPeriod | null;
+    next_transition_local?: string | null;
+  };
+  annual_cycle: {
+    label_year: number;
+    pillar: BaziPillar;
+    start_boundary: { name: string; boundary_time_utc: string; distance_seconds: number; source: string };
+    end_boundary: { name: string; boundary_time_utc: string; distance_seconds: number; source: string };
+  };
+  audit: {
+    status: 'passed' | 'failed';
+    primary_engine: string;
+    verification_engine: string;
+    checks: Array<{ name: string; status: 'passed' | 'failed' | 'skipped' }>;
+  };
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -183,5 +217,15 @@ export function calculateBaziChart(payload: BaziCalculationInput): Promise<BaziC
   return request<BaziCalculationResult>('/api/v1/bazi/charts/calculate', {
     method: 'POST',
     body: JSON.stringify(payload),
+  });
+}
+
+export function calculateBaziCurrentContext(
+  chart: BaziCalculationInput,
+  asOfUtc = new Date().toISOString(),
+): Promise<BaziCurrentContextResult> {
+  return request<BaziCurrentContextResult>('/api/v1/bazi/context/current', {
+    method: 'POST',
+    body: JSON.stringify({ chart, as_of_utc: asOfUtc }),
   });
 }

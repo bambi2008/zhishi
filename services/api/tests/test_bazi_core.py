@@ -1,10 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
+from zoneinfo import ZoneInfo
 
-from app.bazi import BaziCalculationInput, calculate_chart
+from app.bazi import (
+    BaziCalculationInput,
+    BaziCurrentContextInput,
+    calculate_chart,
+    calculate_current_context,
+)
 from app.bazi.solar_time import TimeNormalizationError, normalize_birth_time
 
 
@@ -166,3 +172,78 @@ def test_luck_age_uses_absolute_instant_for_overseas_birth() -> None:
     assert shanghai is not None and new_york is not None
     assert shanghai.start_age == new_york.start_age
     assert shanghai.start_boundary.boundary_time_utc == new_york.start_boundary.boundary_time_utc
+
+
+def current_context(as_of_utc: datetime):
+    chart = BaziCalculationInput(
+        local_datetime=datetime(2005, 12, 23, 8, 37),
+        iana_timezone="Asia/Shanghai",
+        longitude=121.4737,
+        gender="male",
+        solar_time_mode="civil",
+        day_boundary_rule="midnight",
+    )
+    return calculate_current_context(BaziCurrentContextInput(chart=chart, as_of_utc=as_of_utc))
+
+
+def test_current_context_locates_active_luck_and_annual_cycle() -> None:
+    result = current_context(datetime(2026, 8, 7, tzinfo=UTC))
+
+    assert result.status == "ok"
+    assert result.user_visible is True
+    assert result.current_luck.status == "active"
+    assert result.current_luck.current_period is not None
+    assert result.current_luck.current_period.index == 2
+    assert result.current_luck.current_period.pillar.value == "丙戌"
+    assert result.current_luck.next_period is not None
+    assert result.current_luck.next_period.pillar.value == "乙酉"
+    assert result.current_luck.next_transition_local == datetime(2031, 4, 23, 18, 37)
+    assert result.annual_cycle.label_year == 2026
+    assert result.annual_cycle.pillar.value == "丙午"
+    assert result.audit.status == "passed"
+
+
+def test_annual_cycle_switches_at_exact_lichun_instant() -> None:
+    boundary = datetime(2026, 2, 3, 20, 2, 8, tzinfo=UTC)
+    before = current_context(boundary - timedelta(seconds=1))
+    after = current_context(boundary)
+
+    assert (before.annual_cycle.label_year, before.annual_cycle.pillar.value) == (2025, "乙巳")
+    assert (after.annual_cycle.label_year, after.annual_cycle.pillar.value) == (2026, "丙午")
+    assert before.annual_cycle.end_boundary.boundary_time_utc == boundary
+    assert after.annual_cycle.start_boundary.boundary_time_utc == boundary
+
+
+def test_current_luck_switches_at_exclusive_period_boundary() -> None:
+    transition_local = datetime(2021, 4, 23, 18, 37)
+    transition_utc = transition_local.replace(tzinfo=ZoneInfo("Asia/Shanghai")).astimezone(UTC)
+    before = current_context(transition_utc - timedelta(seconds=1))
+    after = current_context(transition_utc)
+
+    assert before.current_luck.current_period is not None
+    assert after.current_luck.current_period is not None
+    assert before.current_luck.current_period.pillar.value == "丁亥"
+    assert after.current_luck.current_period.pillar.value == "丙戌"
+
+
+def test_current_context_reports_pre_luck_state() -> None:
+    result = current_context(datetime(2010, 1, 1, tzinfo=UTC))
+
+    assert result.current_luck.status == "pre_luck"
+    assert result.current_luck.current_period is None
+    assert result.current_luck.next_period is not None
+    assert result.current_luck.next_period.pillar.value == "丁亥"
+    assert result.current_luck.next_transition_local == datetime(2011, 4, 23, 18, 37)
+
+
+def test_current_context_requires_aware_as_of_time() -> None:
+    chart = BaziCalculationInput(
+        local_datetime=datetime(2005, 12, 23, 8, 37),
+        iana_timezone="Asia/Shanghai",
+        longitude=121.4737,
+        gender="male",
+        solar_time_mode="civil",
+        day_boundary_rule="midnight",
+    )
+    with pytest.raises(ValueError, match="as_of_utc"):
+        BaziCurrentContextInput(chart=chart, as_of_utc=datetime(2026, 8, 7))

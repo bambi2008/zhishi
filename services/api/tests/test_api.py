@@ -34,6 +34,48 @@ def test_bazi_calculation_endpoint_returns_audited_chart() -> None:
     assert body["luck_cycles"]["periods"][0]["pillar"]["value"] == "丁亥"
 
 
+def test_bazi_current_context_endpoint_returns_exact_active_cycles() -> None:
+    response = client.post(
+        "/api/v1/bazi/context/current",
+        json={
+            "chart": {
+                "local_datetime": "2005-12-23T08:37:00",
+                "iana_timezone": "Asia/Shanghai",
+                "longitude": 121.4737,
+                "gender": "male",
+                "solar_time_mode": "civil",
+                "day_boundary_rule": "midnight",
+            },
+            "as_of_utc": "2026-08-07T00:00:00Z",
+        },
+    )
+    assert response.status_code == 200
+    body = response.json()
+    assert body["chart"]["calculation_hash"]
+    assert body["current_luck"]["current_period"]["pillar"]["value"] == "丙戌"
+    assert body["annual_cycle"]["label_year"] == 2026
+    assert body["annual_cycle"]["pillar"]["value"] == "丙午"
+    assert body["audit"]["status"] == "passed"
+
+
+def test_bazi_current_context_rejects_naive_as_of_time() -> None:
+    response = client.post(
+        "/api/v1/bazi/context/current",
+        json={
+            "chart": {
+                "local_datetime": "2005-12-23T08:37:00",
+                "iana_timezone": "Asia/Shanghai",
+                "longitude": 121.4737,
+                "gender": "male",
+                "solar_time_mode": "civil",
+                "day_boundary_rule": "midnight",
+            },
+            "as_of_utc": "2026-08-07T00:00:00",
+        },
+    )
+    assert response.status_code == 422
+
+
 def test_location_search_returns_calculation_ready_fields(monkeypatch) -> None:
     def fake_search(query: str, language: str, limit: int):
         assert (query, language, limit) == ("上海", "zh", 6)

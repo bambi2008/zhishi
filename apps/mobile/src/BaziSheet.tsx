@@ -12,12 +12,13 @@ import {
 import {
   BaziCalculationInput,
   BaziCalculationResult,
+  BaziCurrentContextResult,
   BaziGender,
   DayBoundaryRule,
   LocationSearchResult,
   LuckStartRule,
   SolarTimeMode,
-  calculateBaziChart,
+  calculateBaziCurrentContext,
   searchBirthLocations,
 } from './api';
 import {
@@ -96,27 +97,45 @@ function formatLuckDate(value: string): string {
   return value.replace('T', ' ').slice(0, 16);
 }
 
+function formatBeijingInstant(value: string): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Date(date.getTime() + 8 * 60 * 60 * 1000).toISOString().replace('T', ' ').slice(0, 19);
+}
+
 function PillarCard({ label, value, detail }: { label: string; value: string; detail: string }) {
   return <View style={styles.pillarCard}><Text style={styles.pillarLabel}>{label}</Text><Text style={styles.pillarValue}>{value}</Text><Text style={styles.pillarDetail}>{detail}</Text></View>;
 }
 
-function LuckCycleView({ result }: { result: BaziCalculationResult }) {
+function LuckCycleView({ result, currentContext, contextLoading }: { result: BaziCalculationResult; currentContext: BaziCurrentContextResult | null; contextLoading: boolean }) {
   const luck = result.luck_cycles;
   if (!luck) return null;
   if (!luck.user_visible) {
     return <View style={styles.warningCard}><Text style={styles.warningTitle}>大运校验未通过</Text><Text style={styles.warningText}>大运结果已停止展示，四柱仍可独立查看。</Text></View>;
   }
+  const current = currentContext?.current_luck;
+  const activeIndex = current?.current_period?.index;
   return <View style={styles.luckWrap}>
     <View style={styles.luckHeader}><View><Text style={styles.eyebrow}>三路规则审计通过</Text><Text style={styles.luckTitle}>大运时间轴</Text></View><View style={styles.directionChip}><Text style={styles.directionText}>{luck.direction === 'forward' ? '顺行' : '逆行'}</Text></View></View>
     <View style={styles.luckStartCard}><Text style={styles.factTitle}>起运</Text><Text style={styles.luckStartValue}>{formatLuckAge(luck.start_age)}后</Text><Text style={styles.factText}>{formatLuckDate(luck.start_at_local)} · {luck.direction_basis}</Text><Text style={styles.factText}>取 {luck.start_boundary.name} 精确时刻 · {luck.start_rule === 'precise_minutes' ? '分钟折算法' : '天数/时辰折算法'}</Text></View>
+    {contextLoading ? <View style={styles.currentCycleCard}><View style={styles.contextLoadingRow}><ActivityIndicator size="small" color={colors.sage} /><Text style={styles.factText}>正在定位当前大运与流年…</Text></View></View> : null}
+    {!contextLoading && currentContext?.user_visible ? <View style={styles.currentCycleCard}>
+      <Text style={styles.currentCycleEyebrow}>截至现在 · 精确边界已校验</Text>
+      {current?.status === 'active' && current.current_period ? <>
+        <Text style={styles.currentCycleValue}>第 {current.current_period.index} 运 · {current.current_period.pillar.value}</Text>
+        <Text style={styles.currentCycleMeta}>{current.current_period.start_at_local.slice(0, 10)} — {current.current_period.end_at_local_exclusive.slice(0, 10)}（出生地时间）</Text>
+      </> : current?.status === 'pre_luck' ? <><Text style={styles.currentCycleValue}>尚未起运</Text><Text style={styles.currentCycleMeta}>{current.next_transition_local?.slice(0, 16).replace('T', ' ')} 起进入第 1 运</Text></> : <Text style={styles.currentCycleValue}>当前时刻超出八步大运范围</Text>}
+      <View style={styles.annualRow}><View><Text style={styles.factTitle}>当前流年</Text><Text style={styles.annualValue}>{currentContext.annual_cycle.label_year} · {currentContext.annual_cycle.pillar.value}</Text></View><View style={styles.annualBoundary}><Text style={styles.factTitle}>下次流年交接</Text><Text style={styles.annualBoundaryValue}>{formatBeijingInstant(currentContext.annual_cycle.end_boundary.boundary_time_utc)}</Text><Text style={styles.annualBoundaryLabel}>北京时间 · 立春</Text></View></View>
+    </View> : null}
+    {!contextLoading && currentContext && !currentContext.user_visible ? <View style={styles.warningCard}><Text style={styles.warningTitle}>当前周期校验未通过</Text><Text style={styles.warningText}>当前大运与流年已停止展示，原始命盘仍保持不变。</Text></View> : null}
     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.luckPeriods} nestedScrollEnabled>
-      {luck.periods.map(period => <View key={period.index} style={styles.luckPeriodCard}><Text style={styles.luckIndex}>第 {period.index} 运</Text><Text style={styles.luckPillar}>{period.pillar.value}</Text><Text style={styles.luckTenGod}>{period.pillar.stem_ten_god}</Text><View style={styles.luckDivider} /><Text style={styles.luckAge}>{period.start_age.years} 岁起</Text><Text style={styles.luckDate}>{period.start_at_local.slice(0, 10)}</Text></View>)}
+      {luck.periods.map(period => <View key={period.index} style={[styles.luckPeriodCard, activeIndex === period.index && styles.luckPeriodActive]}>{activeIndex === period.index ? <Text style={styles.currentTag}>当前</Text> : null}<Text style={styles.luckIndex}>第 {period.index} 运</Text><Text style={styles.luckPillar}>{period.pillar.value}</Text><Text style={styles.luckTenGod}>{period.pillar.stem_ten_god}</Text><View style={styles.luckDivider} /><Text style={styles.luckAge}>{period.start_age.years} 岁起</Text><Text style={styles.luckDate}>{period.start_at_local.slice(0, 10)}</Text></View>)}
     </ScrollView>
     <Text style={styles.luckMeta}>{luck.audit.primary_engine} × {luck.audit.verification_engine}</Text>
   </View>;
 }
 
-function ResultView({ result }: { result: BaziCalculationResult }) {
+function ResultView({ result, currentContext, contextLoading }: { result: BaziCalculationResult; currentContext: BaziCurrentContextResult | null; contextLoading: boolean }) {
   const pillars = [
     ['年柱', result.pillars.year],
     ['月柱', result.pillars.month],
@@ -140,7 +159,7 @@ function ResultView({ result }: { result: BaziCalculationResult }) {
     </View>
     {result.boundary.risk !== 'none' && <View style={styles.warningCard}><Text style={styles.warningTitle}>边界提醒</Text>{result.boundary.notes.map(note => <Text key={note} style={styles.warningText}>• {note}</Text>)}</View>}
     {result.alternatives.length > 0 && <View style={styles.alternativeCard}><Text style={styles.factTitle}>出生时间误差可能产生的结果</Text>{result.alternatives.map(item => <Text key={item.label} style={styles.alternativeText}>{item.label === 'earliest' ? '最早' : '最晚'}：{item.year} {item.month} {item.day} {item.hour}</Text>)}</View>}
-    <LuckCycleView result={result} />
+    <LuckCycleView result={result} currentContext={currentContext} contextLoading={contextLoading} />
     <Text style={styles.engineMeta}>{result.audit.primary_engine} × {result.audit.verification_engine} · {result.calculation_hash.slice(0, 12)}</Text>
   </View>;
 }
@@ -161,6 +180,8 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
   const [gender, setGender] = useState<BaziGender | ''>('');
   const [luckStartRule, setLuckStartRule] = useState<LuckStartRule>('precise_minutes');
   const [result, setResult] = useState<BaziCalculationResult | null>(null);
+  const [currentContext, setCurrentContext] = useState<BaziCurrentContextResult | null>(null);
+  const [contextLoading, setContextLoading] = useState(false);
   const [lastInput, setLastInput] = useState<BaziCalculationInput | null>(null);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [storageMessage, setStorageMessage] = useState('');
@@ -186,6 +207,16 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       setLastInput(stored.input);
       setResult(stored.result);
       setSavedAt(stored.saved_at);
+      if (stored.input.gender || stored.input.luck_direction_override) {
+        setContextLoading(true);
+        calculateBaziCurrentContext(stored.input).then(context => {
+          if (active) setCurrentContext(context);
+        }).catch(() => {
+          if (active) setCurrentContext(null);
+        }).finally(() => {
+          if (active) setContextLoading(false);
+        });
+      }
     }).catch(() => {
       if (active) setStorageMessage('无法读取本机保存的命盘。');
     });
@@ -259,6 +290,7 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
     }
 
     setLoading(true);
+    setContextLoading(true);
     try {
       const calculationInput: BaziCalculationInput = {
         local_datetime: `${birthDate}T${birthTime}:00`,
@@ -272,17 +304,21 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
         solar_time_mode: solarMode,
         day_boundary_rule: dayRule,
       };
-      const chart = await calculateBaziChart(calculationInput);
+      const context = await calculateBaziCurrentContext(calculationInput);
+      const chart = context.chart;
       setLastInput(calculationInput);
       setResult(chart);
+      setCurrentContext(context);
       setSavedAt(null);
       setStorageMessage('');
       if (!chart.user_visible) setError('双引擎校验未通过，本次结果已停止展示。');
     } catch (requestError) {
       setResult(null);
+      setCurrentContext(null);
       setError(requestError instanceof Error ? requestError.message : '排盘失败，请稍后重试。');
     } finally {
       setLoading(false);
+      setContextLoading(false);
     }
   };
 
@@ -325,7 +361,7 @@ export function BaziSheet({ onClose }: { onClose: () => void }) {
       <Segmented label="起运算法" options={luckStartRules} value={luckStartRule} onChange={setLuckStartRule} />
       {error ? <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View> : null}
       <Pressable disabled={loading} onPress={submit} style={({ pressed }) => [styles.calculateButton, pressed && styles.pressed, loading && styles.disabled]}>{loading ? <ActivityIndicator color="#FFF" /> : <><Text style={styles.calculateText}>{result ? '重新计算' : '开始精确排盘'}</Text><Text style={styles.calculateArrow}>→</Text></>}</Pressable>
-      {result?.user_visible ? <><ResultView result={result} /><View style={styles.storageCard}><View style={{ flex: 1 }}><Text style={styles.storageTitle}>{savedAt ? '命盘已保存在本机' : '保存这张命盘'}</Text><Text style={styles.storageText}>{savedAt ? formatSavedAt(savedAt) : '仅在你明确操作后保存；数据不会自动上传账户。'}</Text>{storageMessage ? <Text style={styles.storageMessage}>{storageMessage}</Text> : null}</View><Pressable onPress={savedAt ? clearSavedChart : saveChart} style={styles.storageButton}><Text style={styles.storageButtonText}>{savedAt ? '清除' : '保存'}</Text></Pressable></View></> : null}
+      {result?.user_visible ? <><ResultView result={result} currentContext={currentContext} contextLoading={contextLoading} /><View style={styles.storageCard}><View style={{ flex: 1 }}><Text style={styles.storageTitle}>{savedAt ? '命盘已保存在本机' : '保存这张命盘'}</Text><Text style={styles.storageText}>{savedAt ? formatSavedAt(savedAt) : '仅在你明确操作后保存；数据不会自动上传账户。'}</Text>{storageMessage ? <Text style={styles.storageMessage}>{storageMessage}</Text> : null}</View><Pressable onPress={savedAt ? clearSavedChart : saveChart} style={styles.storageButton}><Text style={styles.storageButtonText}>{savedAt ? '清除' : '保存'}</Text></Pressable></View></> : null}
       <Text style={styles.disclaimer}>命盘属于传统文化计算结果，不替代医疗、法律、财务或其他专业判断。</Text>
     </ScrollView>
   </View>;
@@ -404,8 +440,20 @@ const styles = StyleSheet.create({
   directionText: { color: colors.terracotta, fontSize: 9, fontWeight: '700' },
   luckStartCard: { borderRadius: 12, backgroundColor: colors.sageSoft, padding: 13, marginTop: 14 },
   luckStartValue: { color: colors.ink, fontSize: 15, fontWeight: '600', marginTop: 7 },
+  currentCycleCard: { borderRadius: 13, backgroundColor: '#F3E9DF', padding: 14, marginTop: 10 },
+  currentCycleEyebrow: { color: colors.terracotta, fontSize: 8, fontWeight: '700', letterSpacing: 0.5 },
+  currentCycleValue: { color: colors.ink, fontSize: 18, fontWeight: '600', marginTop: 8 },
+  currentCycleMeta: { color: colors.muted, fontSize: 8, marginTop: 5 },
+  contextLoadingRow: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  annualRow: { borderTopWidth: 1, borderTopColor: 'rgba(199,122,89,0.18)', marginTop: 13, paddingTop: 12, flexDirection: 'row', justifyContent: 'space-between', gap: 12 },
+  annualValue: { color: colors.ink, fontSize: 14, fontWeight: '600', marginTop: 6 },
+  annualBoundary: { flex: 1, alignItems: 'flex-end' },
+  annualBoundaryValue: { color: colors.ink, fontSize: 9, fontWeight: '600', marginTop: 6 },
+  annualBoundaryLabel: { color: colors.muted, fontSize: 7, marginTop: 3 },
   luckPeriods: { gap: 8, paddingTop: 12, paddingBottom: 4, paddingRight: 4 },
-  luckPeriodCard: { width: 108, minHeight: 150, borderWidth: 1, borderColor: colors.line, borderRadius: 13, backgroundColor: colors.card, padding: 12 },
+  luckPeriodCard: { position: 'relative', width: 108, minHeight: 150, borderWidth: 1, borderColor: colors.line, borderRadius: 13, backgroundColor: colors.card, padding: 12 },
+  luckPeriodActive: { borderColor: colors.terracotta, backgroundColor: '#FFF8F2' },
+  currentTag: { position: 'absolute', top: 9, right: 9, color: colors.terracotta, fontSize: 7, fontWeight: '700' },
   luckIndex: { color: colors.muted, fontSize: 8 },
   luckPillar: { color: colors.ink, fontSize: 22, fontWeight: '600', marginTop: 13 },
   luckTenGod: { color: colors.sage, fontSize: 9, marginTop: 5 },

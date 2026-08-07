@@ -5,7 +5,14 @@ from uuid import UUID
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 
-from .bazi import BaziCalculationInput, BaziCalculationResult, calculate_chart
+from .bazi import (
+    BaziCalculationInput,
+    BaziCalculationResult,
+    BaziCurrentContextInput,
+    BaziCurrentContextResult,
+    calculate_chart,
+    calculate_current_context,
+)
 from .bazi.solar_time import TimeNormalizationError
 from .locations import LocationSearchError, LocationSearchResult, search_locations
 from .models import (
@@ -75,6 +82,17 @@ def health() -> dict[str, str]:
 def calculate_bazi_chart(payload: BaziCalculationInput) -> BaziCalculationResult:
     try:
         return calculate_chart(payload)
+    except TimeNormalizationError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
+
+
+@app.post("/api/v1/bazi/context/current", response_model=BaziCurrentContextResult)
+def calculate_bazi_current_context(payload: BaziCurrentContextInput) -> BaziCurrentContextResult:
+    try:
+        return calculate_current_context(payload)
     except TimeNormalizationError as exc:
         raise HTTPException(
             status_code=422,

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -13,6 +13,7 @@ Gender = Literal["male", "female"]
 LuckDirection = Literal["forward", "reverse"]
 LuckStartRule = Literal["precise_minutes", "traditional_segments"]
 CheckStatus = Literal["passed", "failed", "skipped"]
+CurrentLuckStatus = Literal["pre_luck", "active", "out_of_range"]
 
 
 class BaziCalculationInput(BaseModel):
@@ -170,3 +171,42 @@ class BaziCalculationResult(BaseModel):
     rule_profile: RuleProfile
     luck_cycles: LuckCycleResult | None = None
     calculation_hash: str
+
+
+class BaziCurrentContextInput(BaseModel):
+    chart: BaziCalculationInput
+    as_of_utc: datetime
+
+    @model_validator(mode="after")
+    def validate_as_of_utc(self) -> "BaziCurrentContextInput":
+        if self.as_of_utc.tzinfo is None or self.as_of_utc.utcoffset() is None:
+            raise ValueError("as_of_utc 必须包含 UTC 偏移")
+        if self.chart.gender is None and self.chart.luck_direction_override is None:
+            raise ValueError("当前大运上下文需要 gender 或 luck_direction_override")
+        self.as_of_utc = self.as_of_utc.astimezone(UTC)
+        return self
+
+
+class CurrentLuckContext(BaseModel):
+    status: CurrentLuckStatus
+    current_period: LuckPeriod | None = None
+    next_period: LuckPeriod | None = None
+    next_transition_local: datetime | None = None
+
+
+class AnnualCycleContext(BaseModel):
+    label_year: int
+    pillar: PillarDetails
+    start_boundary: BoundaryCandidate
+    end_boundary: BoundaryCandidate
+
+
+class BaziCurrentContextResult(BaseModel):
+    status: Literal["ok", "audit_failed"]
+    user_visible: bool
+    as_of_utc: datetime
+    as_of_local: datetime
+    chart: BaziCalculationResult
+    current_luck: CurrentLuckContext
+    annual_cycle: AnnualCycleContext
+    audit: AuditReport

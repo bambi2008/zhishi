@@ -12,9 +12,9 @@
 - 通用“为什么这么判断？”证据链展开
 - 安全边界说明与本地演示数据
 - FastAPI API 骨架：Onboarding、Daily、AnxietySession、Journey、Year
-- `zhishi-bazi-core`：时区、历史夏令时、平/真太阳时、精确节气、大运顺逆与起运时间、三路规则审计
+- `zhishi-bazi-core`：时区、历史夏令时、平/真太阳时、精确节气、大运顺逆与起运时间、当前大运、立春流年、三路规则审计
 - 统一 EvidenceChain 结构和高风险安全分流
-- React Native 移动端：Daily / Journey / Year、出生地自动解析、真实出生资料表单、四柱审计展示和用户主动本机保存
+- React Native 移动端：Daily / Journey / Year、出生地自动解析、真实出生资料表单、四柱/当前周期审计展示和用户主动本机保存
 
 ## 本地运行
 
@@ -37,7 +37,7 @@ python -m uvicorn app.main:app --reload --port 8000
 
 当前用户与导航数据仍使用内存存储；四柱排盘已接入真实计算引擎，尚未接入真实账户、PostgreSQL 或模型 API。
 
-真实排盘接口：`POST /api/v1/bazi/charts/calculate`。详细输入、规则和验证方式见 [`services/api/README.md`](services/api/README.md)。
+真实排盘接口：`POST /api/v1/bazi/charts/calculate`；当前大运与流年接口：`POST /api/v1/bazi/context/current`。详细输入、规则和验证方式见 [`services/api/README.md`](services/api/README.md)。
 
 移动端：
 

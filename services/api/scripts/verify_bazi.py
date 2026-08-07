@@ -4,9 +4,13 @@ import argparse
 import json
 import random
 import time
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
-from app.bazi import BaziCalculationInput, calculate_chart
+from app.bazi import (
+    BaziCalculationInput,
+    BaziCurrentContextInput,
+    calculate_current_context,
+)
 from app.bazi.solar_time import TimeNormalizationError
 
 
@@ -24,6 +28,7 @@ def verify(cases: int, seed: int) -> dict:
     first_day = datetime(1901, 1, 1)
     day_span = (datetime(2099, 12, 31) - first_day).days
     failures: list[dict] = []
+    context_statuses = {"pre_luck": 0, "active": 0, "out_of_range": 0}
     skipped = 0
     started = time.perf_counter()
 
@@ -36,32 +41,39 @@ def verify(cases: int, seed: int) -> dict:
             second=randomizer.randrange(60),
         )
         try:
-            result = calculate_chart(
-                BaziCalculationInput(
-                    local_datetime=wall_time,
-                    iana_timezone=timezone_name,
-                    longitude=longitude,
-                    uncertainty_minutes=0,
-                    dst_fold=0,
-                    gender="male" if index % 2 else "female",
-                    luck_start_rule="precise_minutes" if index % 3 else "traditional_segments",
-                    solar_time_mode=("civil", "mean_solar", "apparent_solar")[index % 3],
-                    day_boundary_rule="late_zi_next_day" if index % 2 else "midnight",
-                )
+            chart_input = BaziCalculationInput(
+                local_datetime=wall_time,
+                iana_timezone=timezone_name,
+                longitude=longitude,
+                uncertainty_minutes=0,
+                dst_fold=0,
+                gender="male" if index % 2 else "female",
+                luck_start_rule="precise_minutes" if index % 3 else "traditional_segments",
+                solar_time_mode=("civil", "mean_solar", "apparent_solar")[index % 3],
+                day_boundary_rule="late_zi_next_day" if index % 2 else "midnight",
             )
+            relative_days = -365 if index % 5 == 0 else randomizer.randrange(1, 96 * 365)
+            as_of_utc = (wall_time + timedelta(days=relative_days)).replace(tzinfo=UTC)
+            context = calculate_current_context(
+                BaziCurrentContextInput(chart=chart_input, as_of_utc=as_of_utc)
+            )
+            result = context.chart
         except TimeNormalizationError:
             skipped += 1
             continue
 
+        context_statuses[context.current_luck.status] += 1
         failed_checks = [check for check in result.audit.checks if check.status == "failed"]
         if result.luck_cycles:
             failed_checks.extend(
                 check for check in result.luck_cycles.audit.checks if check.status == "failed"
             )
+        failed_checks.extend(check for check in context.audit.checks if check.status == "failed")
         if failed_checks:
             failures.append(
                 {
                     "wall_time": wall_time.isoformat(),
+                    "as_of_utc": as_of_utc.isoformat(),
                     "timezone": timezone_name,
                     "checks": [
                         {
@@ -78,6 +90,7 @@ def verify(cases: int, seed: int) -> dict:
         "cases": cases,
         "evaluated": cases - skipped,
         "skipped_invalid_wall_times": skipped,
+        "current_luck_statuses": context_statuses,
         "failures": len(failures),
         "failure_samples": failures[:10],
         "elapsed_seconds": round(time.perf_counter() - started, 3),
