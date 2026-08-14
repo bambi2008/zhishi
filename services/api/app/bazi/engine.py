@@ -29,6 +29,7 @@ from .solar_time import (
     TimeNormalizationError,
     normalize_birth_time,
 )
+from .sexagenary import selected_day_pillar, sexagenary_hour_pillar
 
 
 PRIMARY_ENGINE_VERSION = "lunar_python@1.4.8"
@@ -200,6 +201,16 @@ def _build_audit(
             verification_value=verification_day,
         )
     )
+    independent_day = selected_day_pillar(selected_time, day_boundary_rule)
+    checks.append(
+        AuditCheck(
+            name="day_pillar_cycle",
+            status="passed" if independent_day == values["day"] else "failed",
+            primary_value=values["day"],
+            verification_value=independent_day,
+            detail="以香港天文台 2026-01-01 乙亥日为锚点独立推进六十甲子日序",
+        )
+    )
 
     hour_day_object = sxtwl.fromSolar(selected_time.year, selected_time.month, selected_time.day)
     verification_hour = _sxtwl_gan_zhi(hour_day_object.getHourGZ(selected_time.hour))
@@ -209,6 +220,16 @@ def _build_audit(
             status="passed" if verification_hour == values["hour"] else "failed",
             primary_value=values["hour"],
             verification_value=verification_hour,
+        )
+    )
+    independent_hour = sexagenary_hour_pillar(selected_time)
+    checks.append(
+        AuditCheck(
+            name="hour_pillar_rule",
+            status="passed" if independent_hour == values["hour"] else "failed",
+            primary_value=values["hour"],
+            verification_value=independent_hour,
+            detail="按香港天文台日干起时干表及十二时辰范围独立复核",
         )
     )
 
