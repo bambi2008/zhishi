@@ -8,12 +8,16 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ios:export": "expo export --platform ios",
+    "testflight:check": "node scripts/check-testflight-readiness.mjs",
+    "eas-build-pre-install": "node scripts/check-testflight-readiness.mjs"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
     "babel-preset-expo": "~57.0.0",
-    "expo": "~57.0.0",
+    "expo": "~57.0.12",
+    "expo-splash-screen": "~57.0.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.2",
