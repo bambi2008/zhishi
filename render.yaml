@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: zhishi-api
+    runtime: docker
+    plan: starter
+    region: frankfurt
+    rootDir: services/api
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeployTrigger: checksPass
+    healthCheckPath: /health
+    maxShutdownDelaySeconds: 30
