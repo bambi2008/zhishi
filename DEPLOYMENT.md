@@ -15,6 +15,10 @@ The first iOS production build, version `0.1.0` build `3`, was uploaded to App S
 5. Keep `EXPO_PUBLIC_API_BASE_URL=https://zhishi-api.onrender.com` in the EAS build profiles.
 6. From `apps/mobile`, run the readiness check, production build, and submission commands documented in its README.
 
+For AI interpretations, add `DEEPSEEK_API_KEY` as a secret in the Render service environment. `render.yaml` declares the secret with `sync: false` and configures the HTTPS API base URL, `deepseek-v4-flash`, and a 30-second timeout. Never place this key in EAS, `EXPO_PUBLIC_*`, the mobile bundle, logs, or the repository. Deploy the backend and verify the interpretation endpoint before producing the next TestFlight build.
+
+DeepSeek currently states that personal data is processed and stored in the People's Republic of China and does not publish a fixed API-input deletion period. The AI feature must not be opened to EU/EEA/UK public users until the processor agreement, transfer mechanism, transfer-impact assessment, retention controls, and model-improvement use have been approved. Internal TestFlight evaluation should use synthetic or authorised test data only.
+
 For commercial location search, configure `OPEN_METEO_API_KEY`, or set `ZHISHI_GEOCODING_URL` to an authorized compatible service. If a web client is enabled later, set `ZHISHI_CORS_ORIGINS` to comma-separated exact HTTPS origins; wildcard origins are rejected.
 
 The container is pinned to Python 3.11, runs as a non-root user, reads the platform-provided `PORT`, and contains a local health check. GitHub Actions independently runs the backend tests, the deterministic calculation stress suite, mobile type checking, Expo dependency validation, a Linux Docker build, and a live container smoke test.

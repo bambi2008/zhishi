@@ -35,7 +35,7 @@ python -m uvicorn app.main:app --reload --port 8000
 
 健康检查地址：`http://127.0.0.1:8000/health`
 
-当前用户与导航数据仍使用内存存储；四柱排盘已接入真实计算引擎，尚未接入真实账户、PostgreSQL 或模型 API。未绑定真实上下文的今日建议和年度解释接口已主动停用，避免把静态内容包装成个人结果。
+当前用户与导航数据仍使用内存存储；四柱排盘已接入真实计算引擎，尚未接入真实账户或 PostgreSQL。DeepSeek 只用于可选的文化解释层：服务端重新计算并审计上下文，模型逐段引用允许的证据，不能修改命盘或补算强弱、喜忌和吉凶。未绑定真实记录的今日建议与旧年度静态解释接口仍主动停用。
 
 真实排盘接口：`POST /api/v1/bazi/charts/calculate`；当前大运与流年接口：`POST /api/v1/bazi/context/current`。详细输入、规则和验证方式见 [`services/api/README.md`](services/api/README.md)。
 

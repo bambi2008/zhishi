@@ -1,6 +1,6 @@
 # Zhishi Privacy Notice (Pre-Launch Draft)
 
-Last updated: August 7, 2026
+Last updated: August 15, 2026
 
 > This draft describes the current MVP and a privacy-first production baseline. It is not ready for publication until the controller identity, hosting location, service providers, retention settings, and contact channels are completed and verified against the deployed product.
 
@@ -20,6 +20,7 @@ Depending on the feature used, we may process:
 
 - **Birth and calculation data:** birth date, entered birth time, time-accuracy selection, birth place, latitude, longitude, time zone, traditional luck-direction input, calculation rules, and generated chart results.
 - **Reflection data:** journal entries, mood or pressure selections, life-chapter notes, and other content a user chooses to enter.
+- **AI interpretation data:** the selected interpretation focus, an optional question, and a minimised package of chart-derived facts such as Four Pillars labels, ten-god labels, current luck/annual/monthly cycles, boundary dates, and time-accuracy information.
 - **Technical and security data:** IP address, request time, app and device version, crash information, security events, and diagnostic logs where enabled.
 - **Support data:** messages and contact details a user sends to customer support.
 - **Account and transaction data:** only if account or paid features are introduced, and only after this Notice is updated.
@@ -33,6 +34,8 @@ We receive birth, reflection, and support data directly from the user. A place-s
 - A chart is saved locally on the device only after the user selects “Save,” and remains until the user clears it or removes the application and device storage.
 - The current MVP has no advertising SDK, behavioural advertising, account sync, or data-broker integration.
 - Zhishi does not sell personal data or share it for cross-context behavioural advertising in the current MVP.
+- An AI interpretation is generated only after the user selects the feature and acknowledges the just-in-time notice. Zhishi sends DeepSeek the minimised AI interpretation data described above, not the submitted birth date, birth-place name, latitude, or longitude.
+- Zhishi does not intentionally retain the AI request or generated interpretation after returning it. The current mobile app keeps the generated text only in the open page and does not save it automatically.
 
 Production infrastructure and diagnostic logging must be re-audited before this section is published.
 
@@ -45,11 +48,12 @@ For users in the EU, EEA, and UK, the anticipated legal bases are:
 | Generate the requested chart and current cycles | Birth and calculation data | Performance of the user-requested service / contract |
 | Save or clear a chart on the user’s device | Birth data and chart result | User request and performance of the service |
 | Provide journaling or reflection features | Content deliberately entered by the user | Performance of the service; explicit consent if special-category data is intentionally requested |
+| Generate an AI-assisted cultural interpretation requested by the user | Minimised chart-derived facts, selected focus, and optional question | Performance of the user-requested service / contract; additional explicit consent if special-category data is intentionally requested |
 | Protect the Service, prevent abuse, and diagnose faults | Limited technical and security data | Legitimate interests in security and reliability, balanced against user rights |
 | Meet legal obligations and respond to lawful requests | Relevant records | Legal obligation |
 | Optional analytics or marketing | Data described at the consent prompt | Consent where required; disabled in the current MVP |
 
-We will not repurpose birth or reflection data for advertising, model training, or unrelated profiling without a new, valid legal basis and clear advance notice. Material changes based on consent will require affirmative permission where applicable.
+Zhishi will not repurpose birth or reflection data for advertising, Zhishi model training, or unrelated profiling without a new, valid legal basis and clear advance notice. DeepSeek's processing of API inputs and outputs is governed by its separate Open Platform Terms and privacy materials, which currently permit limited de-identified use for service maintenance or improvement. Material changes based on consent will require affirmative permission where applicable.
 
 ## 6. Sensitive Data
 
@@ -63,6 +67,7 @@ We may disclose data only as needed to:
 
 - hosting, security, customer-support, and infrastructure providers acting under contract;
 - a disclosed geocoding provider when the user performs a place search;
+- **Hangzhou DeepSeek Artificial Intelligence Co., Ltd. (DeepSeek):** generation of an expressly requested AI cultural interpretation from minimised chart-derived facts and optional user text;
 - payment processors if paid features are introduced;
 - professional advisers, acquirers, or successors subject to appropriate confidentiality and legal safeguards; or
 - public authorities where disclosure is legally required and proportionate.
@@ -72,6 +77,7 @@ A production subprocessor list, including provider names, processing locations, 
 ## 8. Retention
 
 - **One-time chart requests:** calculation payloads and results are not intentionally retained by the current API after the response. Production request-body logging must remain disabled.
+- **AI interpretation requests:** Zhishi does not intentionally persist the minimised request or generated text. DeepSeek may retain and process API inputs and outputs under its own terms and privacy materials; those materials do not state a fixed API-input deletion period. Users should not include names, contact details, medical records, or other sensitive information in the optional question.
 - **On-device saved charts:** retained until the user clears the saved chart or removes the relevant application storage.
 - **Security logs:** the production target is no more than 30 days unless a longer period is necessary to investigate an incident or meet a legal obligation.
 - **Support records:** the production retention period must be set before support channels launch.
@@ -80,7 +86,7 @@ We will delete or anonymise personal data when it is no longer needed for the st
 
 ## 9. International Transfers
 
-Before transferring EU, EEA, or UK personal data to a country without an applicable adequacy decision, Zhishi will implement an approved transfer mechanism, such as Standard Contractual Clauses or the applicable UK transfer mechanism, and assess supplementary safeguards where required. The production Notice will identify the relevant transfer locations and how to request a copy of the safeguards.
+Render hosts the current Zhishi API in Frankfurt. DeepSeek states that it directly collects, processes, and stores personal data in the People's Republic of China. Before offering the AI interpretation feature publicly to EU, EEA, or UK users, Zhishi must complete an appropriate transfer mechanism, such as Standard Contractual Clauses or the applicable UK transfer mechanism, a transfer-impact assessment, the required processor terms, and supplementary safeguards where necessary. The production Notice will identify the final transfer locations and how to request a copy of applicable safeguards.
 
 ## 10. Your Privacy Rights
 
@@ -114,7 +120,7 @@ If sale, sharing, targeted advertising, financial incentives, or a use of sensit
 
 The chart engine uses deterministic rules to calculate traditional calendar outputs. These outputs do not make legal or similarly significant decisions about a user.
 
-If an AI system directly interacts with users or generates explanatory content, Zhishi will clearly disclose the AI interaction or AI-generated nature of the content where required. Users will not be told that a deterministic calculation is AI-generated, and AI-written interpretation will not be presented as a deterministic engine fact.
+DeepSeek generates the optional cultural interpretation. The product labels that content as AI-generated and separately identifies the deterministic facts cited by each section. Users are not told that a deterministic calculation is AI-generated, and AI-written interpretation is not presented as a deterministic engine fact. The feature does not make legal or similarly significant decisions about a user.
 
 ## 13. Children
 

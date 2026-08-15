@@ -16,6 +16,12 @@ from .bazi import (
 )
 from .bazi.solar_time import TimeNormalizationError
 from .locations import LocationSearchError, LocationSearchInput, LocationSearchResult, search_locations
+from .interpretations import (
+    BaziInterpretationInput,
+    BaziInterpretationResult,
+    InterpretationServiceError,
+    generate_bazi_interpretation,
+)
 from .models import (
     AnxietySession,
     AnxietySessionInput,
@@ -103,6 +109,22 @@ def calculate_bazi_current_context(payload: BaziCurrentContextInput) -> BaziCurr
     except TimeNormalizationError as exc:
         raise HTTPException(
             status_code=422,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
+
+
+@app.post("/api/v1/bazi/interpretations/generate", response_model=BaziInterpretationResult)
+def create_bazi_interpretation(payload: BaziInterpretationInput) -> BaziInterpretationResult:
+    try:
+        return generate_bazi_interpretation(payload)
+    except TimeNormalizationError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
+    except InterpretationServiceError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
             detail={"code": exc.code, "message": str(exc)},
         ) from exc
 

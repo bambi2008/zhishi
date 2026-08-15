@@ -65,7 +65,22 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 
 `as_of_utc` 必须带 UTC 偏移，避免服务器时区造成隐式变化。接口一次返回稳定命盘、当前所在大运、下一步大运及交接时刻、当前流年与前后两个精确立春边界，以及当前流月与前后两个精确“节”边界。当前状态不写入命盘计算哈希；同一输入和同一 `as_of_utc` 可复现同一结果。流年核对主引擎年柱、1984 甲子基准公式及 `sxtwl` 立春时刻；流月核对主引擎月柱、五虎遁公式及 `sxtwl` 节气时刻。任一审计失败时停止展示当前周期。
 
-旧的 `POST /api/v1/year-navigation/{year}` 解释骨架会明确返回 `501 year_navigation_requires_chart_context`。在解释层完成命盘绑定、流派规则、证据链和语言安全审核前，服务不会返回静态季度或领域判断来冒充个性化结果。
+## DeepSeek 个性化文化解读
+
+`POST /api/v1/bazi/interpretations/generate` 会由服务端重新计算命盘与当前上下文，只有四柱、大运、流年和流月全部通过审计时才调用 DeepSeek。客户端不能提交一份自称“已计算”的事实来绕过核心引擎。
+
+请求包含完整排盘输入、带偏移的 `as_of_utc`、语言、最多三个关注领域、可选问题，以及 `acknowledged_ai_processing: true`。发送给 DeepSeek 的不是原始出生资料，而是经过最小化的四柱/十神标签、当前周期、时间精度和审计事实包；出生日期、地点名、经纬度和 API Key 都不会进入移动客户端到模型的直接调用。
+
+模型必须返回 JSON，每个解释段落必须引用服务端允许的 `evidence_ids`。未知证据、空内容、截断内容、危险确定性断言和无效结构会重试一次，仍不合格则返回可恢复的 `503 interpretation_output_rejected`；审计失败返回 `409 interpretation_context_not_audited`。检测到自伤或伤人信号时，在计算和模型调用前返回 `422 interpretation_safety_stop`。
+
+后端环境变量：
+
+- `DEEPSEEK_API_KEY`：必填密钥，只保存在后端秘密管理中。
+- `DEEPSEEK_BASE_URL`：默认 `https://api.deepseek.com`，仅接受 HTTPS。
+- `DEEPSEEK_MODEL`：默认 `deepseek-v4-flash`，可受控切换。
+- `DEEPSEEK_TIMEOUT_SECONDS`：默认 30，限制为 5—60 秒。
+
+旧的 `POST /api/v1/year-navigation/{year}` 静态解释骨架仍返回 `501 year_navigation_requires_chart_context`，防止旧客户端把静态季度或领域判断冒充为新个性化结果。
 
 `POST /api/v1/daily/guidance/generate` 与 `GET /api/v1/daily/guidance/today` 同样会返回 `501 daily_guidance_requires_real_context`。只有用户真实记录、审计命盘和生成规则完成绑定后，今日建议功能才会重新开放。
 

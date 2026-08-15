@@ -1,6 +1,6 @@
 # Zhishi Terms of Use (Pre-Launch Draft)
 
-Last updated: August 7, 2026
+Last updated: August 15, 2026
 
 > This draft is not ready for production acceptance. Replace every bracketed field and obtain review from qualified counsel in the launch markets before release.
 
@@ -12,7 +12,7 @@ The Service is intended only for people aged 18 or older. By using the Service, 
 
 ## 2. What Zhishi Provides
 
-Zhishi provides deterministic traditional-calendar calculations, cultural interpretation, journaling, and self-reflection tools. Some future features may use artificial intelligence to help generate or organise explanatory text. When AI is used, the relevant output will be identified in the product.
+Zhishi provides deterministic traditional-calendar calculations, cultural interpretation, journaling, and self-reflection tools. An optional feature uses DeepSeek to generate explanatory text from a minimised set of audited chart facts and optional user text. AI-generated output is identified in the product and is not part of the deterministic chart calculation.
 
 The Service is for cultural, informational, and entertainment purposes. It does not provide medical, mental-health, legal, financial, employment, immigration, or other professional advice. It must not be used as the sole basis for a high-impact or irreversible decision.
 
@@ -40,7 +40,9 @@ You agree to:
 
 ## 6. Automated and AI-Assisted Features
 
-The core birth-chart engine applies documented calendar and boundary rules and is designed to be reproducible for the same inputs, rules, and engine version. Cultural explanations may be generated or assisted by AI in a future release. Zhishi does not use a birth chart or an AI explanation to make a decision that produces legal or similarly significant effects about a user.
+The core birth-chart engine applies documented calendar and boundary rules and is designed to be reproducible for the same inputs, rules, and engine version. DeepSeek may generate a cultural explanation only after the user requests it. Model output can be incomplete, inaccurate, non-unique, or unavailable, and users must not treat it as a calculation result or verified fact. Zhishi does not use a birth chart or an AI explanation to make a decision that produces legal or similarly significant effects about a user.
+
+Users must not submit another person's personal data, medical records, account credentials, or other sensitive information in the optional AI question. Use of the AI feature is also subject to the availability and applicable use restrictions of the model provider.
 
 ## 7. Accounts, Local Storage, and Availability
 

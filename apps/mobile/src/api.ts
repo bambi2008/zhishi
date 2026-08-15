@@ -205,6 +205,38 @@ export type BaziCurrentContextResult = {
   };
 };
 
+export type InterpretationFocus = 'overview' | 'career' | 'relationships' | 'wellbeing';
+
+export type BaziInterpretationResult = {
+  status: 'ok';
+  generated_at: string;
+  as_of_utc: string;
+  calculation_hash: string;
+  model: string;
+  disclosure: string;
+  uncertainty_notice: string;
+  professional_advice_notice: string;
+  summary: string;
+  sections: Array<{
+    id: string;
+    title: string;
+    interpretation: string;
+    evidence_ids: string[];
+    reflection_questions: string[];
+  }>;
+  cautions: string[];
+  evidence_catalog: Array<{
+    id: string;
+    label: string;
+    value: string;
+  }>;
+  usage: {
+    prompt_tokens?: number | null;
+    completion_tokens?: number | null;
+    total_tokens?: number | null;
+  };
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -257,5 +289,24 @@ export function calculateBaziCurrentContext(
   return request<BaziCurrentContextResult>('/api/v1/bazi/context/current', {
     method: 'POST',
     body: JSON.stringify({ chart, as_of_utc: asOfUtc }),
+  });
+}
+
+export function generateBaziInterpretation(
+  chart: BaziCalculationInput,
+  focusAreas: InterpretationFocus[],
+  question: string,
+  asOfUtc = new Date().toISOString(),
+): Promise<BaziInterpretationResult> {
+  return request<BaziInterpretationResult>('/api/v1/bazi/interpretations/generate', {
+    method: 'POST',
+    body: JSON.stringify({
+      chart,
+      as_of_utc: asOfUtc,
+      language: 'zh-CN',
+      focus_areas: focusAreas,
+      question: question.trim() || null,
+      acknowledged_ai_processing: true,
+    }),
   });
 }
