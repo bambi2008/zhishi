@@ -33,6 +33,12 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#F7F5EF"
       }
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6c5c035b-3eae-4141-a0b4-9a5f635aec49"
+      }
+    },
+    "owner": "zhishi-app"
   }
 }
