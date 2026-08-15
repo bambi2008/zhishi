@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "ios:export": "expo export --platform ios",
     "testflight:check": "node scripts/check-testflight-readiness.mjs",
+    "testflight:build": "node scripts/run-eas-build.mjs",
     "eas-build-pre-install": "node scripts/check-testflight-readiness.mjs"
   },
   "dependencies": {
