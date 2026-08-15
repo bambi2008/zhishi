@@ -4,11 +4,13 @@
 
 The repository root `render.yaml` deploys `services/api` as a Docker web service in Render's Frankfurt region. It uses the paid Starter instance to avoid free-instance sleep delaying the first chart request. Render provides the public HTTPS endpoint and checks `/health` before routing traffic to a new release.
 
+Production is live at `https://zhishi-api.onrender.com`. The `/health` endpoint and a real `POST /api/v1/bazi/charts/calculate` request were verified after the first deployment; the chart and luck-cycle audits both returned `passed`.
+
 1. In Render, choose **New > Blueprint**.
 2. Connect `https://github.com/bambi2008/zhishi` and select the branch containing `render.yaml`.
 3. Deploy the `zhishi-api` service.
-4. Verify `https://<service>.onrender.com/health` returns `status: ok`.
-5. Set that HTTPS root URL as `EXPO_PUBLIC_API_BASE_URL` in the EAS production environment.
+4. Verify `https://zhishi-api.onrender.com/health` returns `status: ok`.
+5. Keep `EXPO_PUBLIC_API_BASE_URL=https://zhishi-api.onrender.com` in the EAS build profiles.
 6. From `apps/mobile`, run the readiness check, production build, and submission commands documented in its README.
 
 For commercial location search, configure `OPEN_METEO_API_KEY`, or set `ZHISHI_GEOCODING_URL` to an authorized compatible service. If a web client is enabled later, set `ZHISHI_CORS_ORIGINS` to comma-separated exact HTTPS origins; wildcard origins are rejected.
