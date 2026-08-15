@@ -6,7 +6,7 @@ The repository root `render.yaml` deploys `services/api` as a Docker web service
 
 Production is live at `https://zhishi-api.onrender.com`. The `/health` endpoint and a real `POST /api/v1/bazi/charts/calculate` request were verified after the first deployment; the chart and luck-cycle audits both returned `passed`.
 
-The first iOS production build, version `0.1.0` build `3`, was uploaded to App Store Connect app `6801827758` and reached the internal TestFlight state `IN_BETA_TESTING`. Future EAS submissions use this fixed App Store Connect ID instead of attempting to create another app record.
+The first iOS production build, version `0.1.0` build `3`, was uploaded to App Store Connect app `6801827758` and reached the internal TestFlight state `IN_BETA_TESTING`. Build `4` includes the iPhone text-input, keyboard-avoidance, and system-dictation guidance fix; it was uploaded successfully and is currently being processed by Apple. Future EAS submissions use this fixed App Store Connect ID instead of attempting to create another app record.
 
 1. In Render, choose **New > Blueprint**.
 2. Connect `https://github.com/bambi2008/zhishi` and select the branch containing `render.yaml`.
