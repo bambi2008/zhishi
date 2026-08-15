@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -400,7 +401,7 @@ export function BaziSheet({ onClose, onChartStorageChange }: { onClose: () => vo
 
   return <View style={styles.sheet}>
     <View style={styles.sheetHeader}><View><Text style={styles.sheetHeaderTitle}>我的命盘</Text><Text style={styles.sheetHeaderMeta}>真实历法 · 可追溯计算</Text></View><Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="关闭命盘"><Text style={styles.closeText}>×</Text></Pressable></View>
-    <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <ScrollView contentContainerStyle={styles.content} keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} keyboardShouldPersistTaps="always" automaticallyAdjustKeyboardInsets>
       <Text style={styles.eyebrow}>出生资料</Text><Text style={styles.title}>先把时间算对，再谈解释。</Text><Text style={styles.subtitle}>出生时间按当地钟表填写。系统会处理历史时区、经度、均时差和节气边界。</Text>
       <View style={styles.twoColumns}><Field label="出生日期" value={birthDate} onChangeText={changeBirthDate} placeholder="1990-06-15" /><Field label="出生时间" value={birthTime} onChangeText={changeBirthTime} placeholder="23:30" /></View>
       <Segmented label="出生时间精度" options={timeAccuracyOptions} value={timeAccuracy} onChange={setTimeAccuracy} />
