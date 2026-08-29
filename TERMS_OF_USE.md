@@ -46,7 +46,7 @@ Users must not submit another person's personal data, medical records, account c
 
 ## 7. Accounts, Local Storage, and Availability
 
-The current MVP does not require an account. A chart is saved on the device only when the user selects “Save.” A fact-clarification record is saved only when the user confirms “Save this reflection.” Users can delete individual reflection records, clear all reflection records from Settings, and manage the saved chart separately. These records are not automatically synced to Zhishi or sent to DeepSeek. Future account or cloud-sync features will be covered by an updated Privacy Notice before launch.
+The current MVP does not require an account. A chart is saved on the device only when the user selects “Save.” A daily-state record is saved only when the user confirms “Save today's state,” and a fact-clarification record is saved only when the user confirms “Save this reflection.” Users can edit or delete individual daily-state and reflection records, clear each record category from Settings, export a text copy through the device share sheet, and manage the saved chart separately. These records are not automatically synced to Zhishi or sent to DeepSeek. Future account or cloud-sync features will be covered by an updated Privacy Notice before launch.
 
 We may maintain, change, suspend, or discontinue features. We will provide notice where required by applicable law. Availability can be affected by time-zone databases, location providers, app stores, hosting providers, and other third-party services.
 

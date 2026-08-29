@@ -32,8 +32,9 @@ We receive birth, reflection, and support data directly from the user. A place-s
 - A chart calculation request is sent to the configured Zhishi calculation API.
 - The current API does not intentionally persist calculation request bodies or chart results after returning the response.
 - A chart is saved locally on the device only after the user selects “Save,” and remains until the user clears it or removes the application and device storage.
+- A daily-state record containing the user's selected energy, stress, emotion, focus area, and optional text is saved locally only after the user selects “Save today's state.” One record is kept per local calendar date and can be updated or deleted by the user.
 - A fact-clarification record is saved locally only after the user selects “Save this reflection.” Saved records can be reviewed and deleted individually, or cleared together from Settings.
-- Saved fact-clarification records are not automatically sent to the Zhishi API or DeepSeek.
+- Saved daily-state and fact-clarification records are not automatically sent to the Zhishi API or DeepSeek.
 - The current MVP has no advertising SDK, behavioural advertising, account sync, or data-broker integration.
 - Zhishi does not sell personal data or share it for cross-context behavioural advertising in the current MVP.
 - An AI interpretation is generated only after the user selects the feature and acknowledges the just-in-time notice. Zhishi sends DeepSeek the minimised AI interpretation data described above, not the submitted birth date, birth-place name, latitude, or longitude.
@@ -81,6 +82,7 @@ A production subprocessor list, including provider names, processing locations, 
 - **One-time chart requests:** calculation payloads and results are not intentionally retained by the current API after the response. Production request-body logging must remain disabled.
 - **AI interpretation requests:** Zhishi does not intentionally persist the minimised request or generated text. DeepSeek may retain and process API inputs and outputs under its own terms and privacy materials; those materials do not state a fixed API-input deletion period. Users should not include names, contact details, medical records, or other sensitive information in the optional question.
 - **On-device saved charts:** retained until the user clears the saved chart or removes the relevant application storage.
+- **On-device daily-state records:** retained until the user deletes an individual date, clears all daily-state records in Settings, or removes the relevant application storage.
 - **On-device fact-clarification records:** retained until the user deletes an individual record, clears all such records in Settings, or removes the relevant application storage.
 - **Security logs:** the production target is no more than 30 days unless a longer period is necessary to investigate an incident or meet a legal obligation.
 - **Support records:** the production retention period must be set before support channels launch.
