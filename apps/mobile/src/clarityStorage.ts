@@ -77,6 +77,33 @@ export async function saveClarityRecord(draft: ClarityRecordDraft): Promise<Clar
   return record;
 }
 
+export async function updateClarityRecord(
+  id: string,
+  draft: ClarityRecordDraft,
+): Promise<ClarityRecord> {
+  const normalized = normalizeDraft(draft);
+  if (!normalized.fact || !normalized.emotion) {
+    throw new Error('请先写下事实并选择一种感受。');
+  }
+
+  const existing = await loadClarityRecords();
+  const current = existing.find(record => record.id === id);
+  if (!current) {
+    throw new Error('这条记录已经不存在，无法继续修改。');
+  }
+
+  const updated: ClarityRecord = {
+    ...current,
+    ...normalized,
+    updatedAt: new Date().toISOString(),
+  };
+  await AsyncStorage.setItem(
+    CLARITY_STORAGE_KEY,
+    JSON.stringify(existing.map(record => record.id === id ? updated : record)),
+  );
+  return updated;
+}
+
 export async function deleteClarityRecord(id: string): Promise<void> {
   const existing = await loadClarityRecords();
   await AsyncStorage.setItem(

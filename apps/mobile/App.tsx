@@ -32,6 +32,7 @@ import {
   deleteClarityRecord,
   loadClarityRecords,
   saveClarityRecord,
+  updateClarityRecord,
 } from './src/clarityStorage';
 
 type ViewKey = 'daily' | 'journey' | 'year';
@@ -61,6 +62,10 @@ function ArrowButton({ label = '→', onPress }: { label?: string; onPress: () =
 
 function PrimaryButton({ label, onPress, done = false, disabled = false }: { label: string; onPress: () => void; done?: boolean; disabled?: boolean }) {
   return <Pressable disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryButton, done && styles.primaryButtonDone, pressed && styles.pressed, disabled && styles.disabled]}><Text style={styles.primaryButtonLabel}>{label}</Text><Text style={styles.primaryButtonArrow}>{done ? '✓' : '→'}</Text></Pressable>;
+}
+
+function StepBackButton({ onPress }: { onPress: () => void }) {
+  return <Pressable accessibilityRole="button" onPress={onPress} style={styles.stepBackButton}><Text style={styles.stepBackButtonText}>← 返回上一步</Text></Pressable>;
 }
 
 function Header({ onSafety, onProfile, apiOnline }: { onSafety: () => void; onProfile: () => void; apiOnline: boolean }) {
@@ -167,14 +172,31 @@ function DailyScreen({ onClarity, onBazi, onOpenRecord, latestRecord, revision }
 }
 
 function JourneyScreen({ records, loading, error, onClarity, onOpenRecord }: { records: ClarityRecord[]; loading: boolean; error: string; onClarity: () => void; onOpenRecord: (record: ClarityRecord) => void }) {
+  const [query, setQuery] = useState('');
+  const [emotionFilter, setEmotionFilter] = useState('全部');
+  const emotions = ['全部', '害怕', '愤怒', '无力', '羞耻', '后悔', '失望', '麻木', '其他'];
+  const normalizedQuery = query.trim().toLocaleLowerCase('zh-CN');
+  const filteredRecords = records.filter(record => {
+    const emotionMatches = emotionFilter === '全部' || record.emotion === emotionFilter;
+    if (!emotionMatches) return false;
+    if (!normalizedQuery) return true;
+    return [record.fact, record.emotion, record.interpretation, record.worry, record.nextQuestion]
+      .some(value => value.toLocaleLowerCase('zh-CN').includes(normalizedQuery));
+  });
+  const filterActive = Boolean(normalizedQuery) || emotionFilter !== '全部';
   return <View>
     <View style={styles.heading}><Text style={styles.eyebrow}>JOURNEY · 现实记录</Text><Text style={styles.pageTitle}>把发生过的事，慢慢连成自己的章节。</Text><Text style={styles.pageSubtitle}>事实、感受、解释和担心分开保存。这里不根据命理替你编故事，也不用虚构的完成比例催促你。</Text></View>
     {loading ? <View style={[styles.card, styles.yearLoadingCard]}><ActivityIndicator color={colors.sageDeep} /><Text style={styles.yearLoadingText}>正在读取本机记录…</Text></View> : null}
     {!loading && error ? <View style={[styles.card, styles.yearErrorCard]}><Kicker label="读取失败" color={colors.terracotta} /><Text style={styles.journeyEmptyTitle}>记录暂时没有读出来。</Text><Text style={styles.journeyEmptyText}>{error}</Text></View> : null}
     {!loading && !error && records.length === 0 ? <View style={[styles.card, styles.journeyEmptyCard]}><Kicker label="从第一条真实记录开始" color={colors.lilac} /><Text style={styles.journeyEmptyTitle}>这里还没有内容。</Text><Text style={styles.journeyEmptyText}>写下一件已经发生的事，再把感受、解释和担心分开。保存后就能从这里回看。</Text><PrimaryButton label="做一次事实梳理" onPress={onClarity} /></View> : null}
     {!loading && !error && records.length > 0 ? <>
-      <View style={[styles.card, styles.journeySummaryCard]}><View style={styles.journeySummaryTop}><View><Kicker label="只统计你保存的内容" color={colors.sage} /><Text style={styles.journeySummaryTitle}>已经留下 {records.length} 次梳理</Text></View><Text style={styles.journeySummaryNumber}>{records.length}</Text></View><Text style={styles.journeySummaryText}>最近一次：{formatClarityDate(records[0].createdAt)}。这些记录只保存在当前设备，可在设置中统一清除。</Text><PrimaryButton label="记录一件新发生的事" onPress={onClarity} /></View>
-      <View style={styles.journeyRecordList}>{records.map(record => <Pressable key={record.id} onPress={() => onOpenRecord(record)} style={({ pressed }) => [styles.journeyRecordCard, pressed && styles.pressed]}><View style={styles.journeyRecordMeta}><Text style={styles.journeyRecordDate}>{formatClarityDate(record.createdAt, true)}</Text><Text style={styles.journeyRecordEmotion}>{record.emotion}</Text></View><Text style={styles.journeyRecordFact} numberOfLines={3}>{record.fact}</Text>{record.nextQuestion ? <Text style={styles.journeyRecordQuestion} numberOfLines={2}>下一步确认：{record.nextQuestion}</Text> : null}<Text style={styles.journeyRecordOpen}>查看事实、解释与担心 →</Text></Pressable>)}</View>
+      <View style={[styles.card, styles.journeySummaryCard]}><View style={styles.journeySummaryTop}><View style={styles.journeySummaryCopy}><Kicker label="只统计你保存的内容" color={colors.sage} /><Text style={styles.journeySummaryTitle}>已经留下 {records.length} 次梳理</Text></View><Text style={styles.journeySummaryNumber}>{records.length}</Text></View><Text style={styles.journeySummaryText}>最近一次：{formatClarityDate(records[0].createdAt)}。这些记录只保存在当前设备，可在设置中统一清除。</Text><PrimaryButton label="记录一件新发生的事" onPress={onClarity} /></View>
+      <View style={styles.journeyToolsCard}>
+        <View style={styles.journeySearchRow}><Text style={styles.journeySearchIcon}>⌕</Text><TextInput accessibilityLabel="搜索现实记录" value={query} onChangeText={setQuery} placeholder="搜索事实、解释、担心或下一步" placeholderTextColor="#9DA199" returnKeyType="search" style={styles.journeySearchInput} />{query ? <Pressable accessibilityRole="button" accessibilityLabel="清除搜索" onPress={() => setQuery('')} style={styles.journeySearchClear}><Text style={styles.journeySearchClearText}>×</Text></Pressable> : null}</View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.journeyEmotionFilters}>{emotions.map(item => <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: emotionFilter === item }} onPress={() => setEmotionFilter(item)} style={[styles.journeyFilterChip, emotionFilter === item && styles.journeyFilterChipActive]}><Text style={[styles.journeyFilterChipText, emotionFilter === item && styles.journeyFilterChipTextActive]}>{item}</Text></Pressable>)}</ScrollView>
+        <Text style={styles.journeyResultCount}>{filterActive ? `找到 ${filteredRecords.length} 条记录` : `按时间查看全部 ${records.length} 条记录`}</Text>
+      </View>
+      {filteredRecords.length > 0 ? <View style={styles.journeyRecordList}>{filteredRecords.map((record, index) => <View key={record.id} style={styles.journeyTimelineRow}><View style={styles.journeyTimelineRail}><View style={styles.journeyTimelineDot} />{index < filteredRecords.length - 1 ? <View style={styles.journeyTimelineLine} /> : null}</View><Pressable accessibilityRole="button" accessibilityLabel={`${formatClarityDate(record.createdAt, true)}，${record.emotion}，${record.fact}`} onPress={() => onOpenRecord(record)} style={({ pressed }) => [styles.journeyRecordCard, pressed && styles.pressed]}><View style={styles.journeyRecordMeta}><Text style={styles.journeyRecordDate}>{formatClarityDate(record.createdAt, true)}</Text><Text style={styles.journeyRecordEmotion}>{record.emotion}</Text></View><Text style={styles.journeyRecordFact} numberOfLines={3}>{record.fact}</Text>{record.nextQuestion ? <Text style={styles.journeyRecordQuestion} numberOfLines={2}>下一步确认：{record.nextQuestion}</Text> : null}<Text style={styles.journeyRecordOpen}>查看或编辑这条记录 →</Text></Pressable></View>)}</View> : <View style={[styles.card, styles.journeyNoResults]}><Text style={styles.journeyNoResultsTitle}>没有符合条件的记录。</Text><Text style={styles.journeyNoResultsText}>换一个关键词或感受筛选，不会影响已经保存的内容。</Text><Pressable onPress={() => { setQuery(''); setEmotionFilter('全部'); }} style={styles.journeyResetButton}><Text style={styles.journeyResetButtonText}>清除筛选</Text></Pressable></View>}
     </> : null}
   </View>;
 }
@@ -314,27 +336,31 @@ function YearScreen({ onBazi, revision }: { onBazi: () => void; revision: number
   </View>;
 }
 
-function ClaritySheet({ step, setStep, onClose, onSaved }: { step: number; setStep: (step: number) => void; onClose: () => void; onSaved: (record: ClarityRecord) => void }) {
-  const [input, setInput] = useState('');
-  const [emotion, setEmotion] = useState('');
-  const [interpretation, setInterpretation] = useState('');
-  const [worry, setWorry] = useState('');
-  const [question, setQuestion] = useState('');
+function ClaritySheet({ step, setStep, onClose, onSaved, initialRecord = null }: { step: number; setStep: (step: number) => void; onClose: () => void; onSaved: (record: ClarityRecord) => void; initialRecord?: ClarityRecord | null }) {
+  const [input, setInput] = useState(initialRecord?.fact ?? '');
+  const [emotion, setEmotion] = useState(initialRecord?.emotion ?? '');
+  const [interpretation, setInterpretation] = useState(initialRecord?.interpretation ?? '');
+  const [worry, setWorry] = useState(initialRecord?.worry ?? '');
+  const [question, setQuestion] = useState(initialRecord?.nextQuestion ?? '');
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
+  const editing = Boolean(initialRecord);
   const emotions = ['害怕', '愤怒', '无力', '羞耻', '后悔', '失望', '麻木', '其他'];
   const complete = async () => {
     if (!input.trim() || !emotion) return;
     setSaving(true);
     setSaveError('');
     try {
-      const record = await saveClarityRecord({
+      const draft = {
         fact: input,
         emotion,
         interpretation,
         worry,
         nextQuestion: question,
-      });
+      };
+      const record = initialRecord
+        ? await updateClarityRecord(initialRecord.id, draft)
+        : await saveClarityRecord(draft);
       onSaved(record);
     } catch (error) {
       setSaveError(error instanceof Error ? error.message : '这次梳理没有保存成功，请重试。');
@@ -342,11 +368,11 @@ function ClaritySheet({ step, setStep, onClose, onSaved }: { step: number; setSt
       setSaving(false);
     }
   };
-  return <Sheet title="我现在有点乱" onClose={onClose}>
+  return <Sheet title={editing ? '编辑现实记录' : '我现在有点乱'} onClose={onClose}>
     <View style={styles.sheetProgress}>{[1, 2, 3].map(i => <View key={i} style={[styles.sheetProgressBar, i <= step && styles.sheetProgressActive]} />)}</View>
-    {step === 1 && <><Text style={styles.sheetEyebrow}>01 · 发生了什么？</Text><Text style={styles.sheetTitle}>只写你确认发生的事。</Text><Text style={styles.sheetSubtitle}>不用组织得很完整，也先不要解释原因。</Text><TextInput value={input} onChangeText={setInput} maxLength={2000} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我收到一条消息，对方没有说明截止时间。" placeholderTextColor="#A9ADA4" style={styles.textArea} /><Text style={styles.inputVoiceHint}>可直接打字，也可以使用 iPhone 键盘听写。</Text><PrimaryButton label={input.trim() ? '继续' : '先写下一件事实'} onPress={() => { if (input.trim()) setStep(2); }} /></>}
-    {step === 2 && <><Text style={styles.sheetEyebrow}>02 · 现在最强烈的感受是？</Text><Text style={styles.sheetTitle}>先命名它，不把它当结论。</Text><Text style={styles.sheetSubtitle}>这里不会根据情绪自动推断你的处境。</Text><View style={styles.emotionGrid}>{emotions.map(item => <Pressable key={item} onPress={() => setEmotion(item)} style={[styles.emotionButton, emotion === item && styles.emotionSelected]}><Text>{item}</Text></Pressable>)}</View><PrimaryButton label={emotion ? '继续' : '先选择一种感受'} onPress={() => { if (emotion) setStep(3); }} /></>}
-    {step === 3 && <><Text style={styles.sheetEyebrow}>03 · 把事实、解释和担心分开。</Text><Text style={styles.sheetTitle}>以下内容全部来自你。</Text><View style={styles.triadItem}><Text style={styles.triadLabel}>已经发生的事实</Text><Text style={styles.triadText}>{input}</Text></View><View style={styles.triadItem}><Text style={styles.triadLabel}>当下感受</Text><Text style={styles.triadText}>{emotion}</Text></View><Text style={styles.clarityFieldLabel}>你对事实的解释</Text><TextInput value={interpretation} onChangeText={setInterpretation} maxLength={1200} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我觉得对方可能不重视这件事。" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.clarityFieldLabel}>你担心未来会发生什么</Text><TextInput value={worry} onChangeText={setWorry} maxLength={1200} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我担心这会影响后续安排。" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.clarityFieldLabel}>下一步只确认哪一个问题？</Text><TextInput value={question} onChangeText={setQuestion} maxLength={600} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：这件事的截止时间是什么？" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.inputVoiceHint}>可直接打字，也可以使用 iPhone 键盘听写。</Text><View style={styles.recommendation}><Text style={styles.triadLabel}>本次梳理</Text><Text style={styles.recommendationTitle}>{question.trim() || '暂时没有下一步问题也可以保存。'}</Text><Text style={styles.triadText}>知时没有替你判断，也没有根据命理生成建议。保存后可在“章节”页回看或删除，内容不会发送到服务器。</Text></View>{saveError ? <View style={styles.interpretationError}><Text style={styles.interpretationErrorText}>{saveError}</Text></View> : null}<PrimaryButton disabled={saving} label={saving ? '正在保存到本机…' : '保存这次梳理'} done onPress={complete} /></>}
+    {step === 1 && <><Text style={styles.sheetEyebrow}>01 · {editing ? '核对已经发生的事' : '发生了什么？'}</Text><Text style={styles.sheetTitle}>只写你确认发生的事。</Text><Text style={styles.sheetSubtitle}>不用组织得很完整，也先不要解释原因。</Text><TextInput accessibilityLabel="已经发生的事实" value={input} onChangeText={setInput} maxLength={2000} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我收到一条消息，对方没有说明截止时间。" placeholderTextColor="#A9ADA4" style={styles.textArea} /><Text style={styles.inputVoiceHint}>可直接打字，也可以使用 iPhone 键盘听写。</Text><PrimaryButton label={input.trim() ? '继续' : '先写下一件事实'} onPress={() => { if (input.trim()) setStep(2); }} /></>}
+    {step === 2 && <><StepBackButton onPress={() => setStep(1)} /><Text style={styles.sheetEyebrow}>02 · 现在最强烈的感受是？</Text><Text style={styles.sheetTitle}>先命名它，不把它当结论。</Text><Text style={styles.sheetSubtitle}>这里不会根据情绪自动推断你的处境。</Text><View style={styles.emotionGrid}>{emotions.map(item => <Pressable key={item} accessibilityRole="button" accessibilityState={{ selected: emotion === item }} onPress={() => setEmotion(item)} style={[styles.emotionButton, emotion === item && styles.emotionSelected]}><Text>{item}</Text></Pressable>)}</View><PrimaryButton label={emotion ? '继续' : '先选择一种感受'} onPress={() => { if (emotion) setStep(3); }} /></>}
+    {step === 3 && <><StepBackButton onPress={() => setStep(2)} /><Text style={styles.sheetEyebrow}>03 · 把事实、解释和担心分开。</Text><Text style={styles.sheetTitle}>以下内容全部来自你。</Text><View style={styles.triadItem}><Text style={styles.triadLabel}>已经发生的事实</Text><Text style={styles.triadText}>{input}</Text></View><View style={styles.triadItem}><Text style={styles.triadLabel}>当下感受</Text><Text style={styles.triadText}>{emotion}</Text></View><Text style={styles.clarityFieldLabel}>你对事实的解释</Text><TextInput accessibilityLabel="你对事实的解释" value={interpretation} onChangeText={setInterpretation} maxLength={1200} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我觉得对方可能不重视这件事。" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.clarityFieldLabel}>你担心未来会发生什么</Text><TextInput accessibilityLabel="你担心未来会发生什么" value={worry} onChangeText={setWorry} maxLength={1200} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我担心这会影响后续安排。" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.clarityFieldLabel}>下一步只确认哪一个问题？</Text><TextInput accessibilityLabel="下一步只确认哪一个问题" value={question} onChangeText={setQuestion} maxLength={600} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：这件事的截止时间是什么？" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.inputVoiceHint}>可直接打字，也可以使用 iPhone 键盘听写。</Text><View style={styles.recommendation}><Text style={styles.triadLabel}>{editing ? '修改后的梳理' : '本次梳理'}</Text><Text style={styles.recommendationTitle}>{question.trim() || '暂时没有下一步问题也可以保存。'}</Text><Text style={styles.triadText}>知时没有替你判断，也没有根据命理生成建议。保存后可在“章节”页回看、继续编辑或删除，内容不会发送到服务器。</Text></View>{saveError ? <View style={styles.interpretationError}><Text style={styles.interpretationErrorText}>{saveError}</Text></View> : null}<PrimaryButton disabled={saving} label={saving ? (editing ? '正在保存修改…' : '正在保存到本机…') : (editing ? '保存修改' : '保存这次梳理')} done onPress={complete} /></>}
   </Sheet>;
 }
 
@@ -354,7 +380,7 @@ function Sheet({ title, children, onClose }: { title: string; children: React.Re
   return <View style={styles.sheet}><View style={styles.sheetHeader}><Text style={styles.sheetHeaderTitle}>{title}</Text><Pressable onPress={onClose}><Text style={styles.closeText}>×</Text></Pressable></View><ScrollView contentContainerStyle={styles.sheetContent} keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} keyboardShouldPersistTaps="always" automaticallyAdjustKeyboardInsets>{children}</ScrollView></View>;
 }
 
-function ClarityRecordSheet({ record, onClose, onDelete }: { record: ClarityRecord; onClose: () => void; onDelete: (id: string) => Promise<void> }) {
+function ClarityRecordSheet({ record, onClose, onEdit, onDelete }: { record: ClarityRecord; onClose: () => void; onEdit: (record: ClarityRecord) => void; onDelete: (id: string) => Promise<void> }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
@@ -377,11 +403,13 @@ function ClarityRecordSheet({ record, onClose, onDelete }: { record: ClarityReco
   ].filter(([, value]) => value);
   return <Sheet title="现实记录" onClose={onClose}>
     <Text style={styles.sheetEyebrow}>{formatClarityDate(record.createdAt, true)}</Text>
+    {record.updatedAt !== record.createdAt ? <Text style={styles.recordUpdatedAt}>最后修改于 {formatClarityDate(record.updatedAt, true)}</Text> : null}
     <Text style={styles.recordDetailTitle}>这次梳理由你自己填写。</Text>
     <Text style={styles.sheetSubtitle}>知时只负责把不同层次分开保存，没有根据命盘或模型补写内容。</Text>
     <View style={styles.recordDetailList}>{fields.map(([label, value]) => <View key={label} style={styles.recordDetailItem}><Text style={styles.recordDetailLabel}>{label}</Text><Text style={styles.recordDetailValue}>{value}</Text></View>)}</View>
     <View style={styles.localOnlyNotice}><Text style={styles.localOnlyTitle}>保存在本机</Text><Text style={styles.localOnlyText}>这条记录不会自动发送给知时 API 或 DeepSeek。卸载 App、清除应用数据或主动删除后将无法恢复。</Text></View>
     {deleteError ? <View style={styles.interpretationError}><Text style={styles.interpretationErrorText}>{deleteError}</Text></View> : null}
+    {!confirmingDelete ? <PrimaryButton label="编辑这条记录" onPress={() => onEdit(record)} /> : null}
     {!confirmingDelete ? <Pressable onPress={() => setConfirmingDelete(true)} style={styles.dangerTextButton}><Text style={styles.dangerTextButtonLabel}>删除这条记录</Text></Pressable> : <View style={styles.deleteConfirmCard}><Text style={styles.deleteConfirmTitle}>确定永久删除？</Text><Text style={styles.deleteConfirmText}>删除后无法恢复。</Text><View style={styles.deleteConfirmActions}><Pressable disabled={deleting} onPress={() => setConfirmingDelete(false)} style={styles.deleteCancelButton}><Text style={styles.deleteCancelLabel}>取消</Text></Pressable><Pressable disabled={deleting} onPress={remove} style={[styles.deleteButton, deleting && styles.disabled]}><Text style={styles.deleteButtonLabel}>{deleting ? '正在删除…' : '确认删除'}</Text></Pressable></View></View>}
   </Sheet>;
 }
@@ -439,18 +467,29 @@ export default function App() {
   const [chartRevision, setChartRevision] = useState(0);
   const [clarityRevision, setClarityRevision] = useState(0);
   const [selectedRecord, setSelectedRecord] = useState<ClarityRecord | null>(null);
+  const [editingRecord, setEditingRecord] = useState<ClarityRecord | null>(null);
   const clarityState = useClarityRecords(clarityRevision);
   const openClarity = () => {
+    setEditingRecord(null);
     setClarityStep(1);
     setClaritySession(value => value + 1);
     setModal('clarity');
   };
   const openRecord = (record: ClarityRecord) => {
+    setEditingRecord(null);
     setSelectedRecord(record);
     setRecordSession(value => value + 1);
     setModal('clarity-record');
   };
+  const openRecordEditor = (record: ClarityRecord) => {
+    setSelectedRecord(null);
+    setEditingRecord(record);
+    setClarityStep(1);
+    setClaritySession(value => value + 1);
+    setModal('clarity');
+  };
   const handleRecordSaved = (_record: ClarityRecord) => {
+    setEditingRecord(null);
     setClarityRevision(value => value + 1);
     setModal(null);
     setView('journey');
@@ -488,8 +527,8 @@ export default function App() {
     getApiHealth().then(() => setApiOnline(true)).catch(() => setApiOnline(false));
   }, []);
   return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={colors.paper} /><View style={styles.app}><Header onSafety={() => setModal('safety')} onProfile={() => { setProfileSession(value => value + 1); setModal('profile'); }} apiOnline={apiOnline} /><ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} keyboardShouldPersistTaps="always" automaticallyAdjustKeyboardInsets>{view === 'daily' ? <DailyScreen onClarity={openClarity} onBazi={() => setModal('bazi')} onOpenRecord={openRecord} latestRecord={clarityState.records[0] ?? null} revision={chartRevision} /> : view === 'journey' ? <JourneyScreen records={clarityState.records} loading={clarityState.loading} error={clarityState.error} onClarity={openClarity} onOpenRecord={openRecord} /> : <YearScreen onBazi={() => setModal('bazi')} revision={chartRevision} />}</ScrollView><TabBar view={view} setView={setView} onClarity={openClarity} onBazi={() => setModal('bazi')} />
-    <Modal visible={modal === 'clarity'} transparent animationType="slide" onRequestClose={() => setModal(null)}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBackdrop}><ClaritySheet key={claritySession} step={clarityStep} setStep={setClarityStep} onClose={() => setModal(null)} onSaved={handleRecordSaved} /></KeyboardAvoidingView></Modal>
-    <Modal visible={modal === 'clarity-record'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}>{selectedRecord ? <ClarityRecordSheet key={`${selectedRecord.id}-${recordSession}`} record={selectedRecord} onClose={() => setModal(null)} onDelete={handleRecordDeleted} /> : null}</View></Modal>
+    <Modal visible={modal === 'clarity'} transparent animationType="slide" onRequestClose={() => setModal(null)}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBackdrop}><ClaritySheet key={claritySession} step={clarityStep} setStep={setClarityStep} initialRecord={editingRecord} onClose={() => { setEditingRecord(null); setModal(null); }} onSaved={handleRecordSaved} /></KeyboardAvoidingView></Modal>
+    <Modal visible={modal === 'clarity-record'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}>{selectedRecord ? <ClarityRecordSheet key={`${selectedRecord.id}-${recordSession}`} record={selectedRecord} onClose={() => setModal(null)} onEdit={openRecordEditor} onDelete={handleRecordDeleted} /> : null}</View></Modal>
     <Modal visible={modal === 'safety'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><SafetySheet onClose={() => setModal(null)} /></View></Modal>
     <Modal visible={modal === 'profile'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><ProfileSheet key={`profile-${profileSession}-${clarityRevision}`} onClose={() => setModal(null)} onOpenBazi={() => setModal('bazi')} recordCount={clarityState.records.length} onExportRecords={handleExportRecords} onClearRecords={handleClearRecords} /></View></Modal>
     <Modal visible={modal === 'bazi'} transparent animationType="slide" onRequestClose={() => setModal(null)}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBackdrop}><BaziSheet onClose={() => setModal(null)} onChartStorageChange={() => setChartRevision(value => value + 1)} /></KeyboardAvoidingView></Modal>
@@ -517,8 +556,8 @@ const styles = StyleSheet.create({
   todayChartCard: { marginTop: 13, backgroundColor: '#F2F5ED' }, todayChartPillars: { flexDirection: 'row', gap: 7, marginTop: 17 }, todayChartPillar: { flex: 1, alignItems: 'center', backgroundColor: colors.card, borderRadius: 11, paddingVertical: 11 }, todayChartLabel: { color: colors.muted, fontSize: 8 }, todayChartValue: { color: colors.ink, fontSize: 17, fontWeight: '600', marginTop: 7 }, todayEvidence: { color: colors.muted, fontSize: 8, textAlign: 'center', marginTop: 10 }, todayTextButton: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 10, marginTop: 6 }, todayTextButtonLabel: { color: colors.sageDeep, fontSize: 9, fontWeight: '600' }, todayClarityCard: { marginTop: 13, backgroundColor: '#E9EEEA' },
   latestRecordCard: { marginTop: 13, backgroundColor: '#F2F1F5' }, latestRecordDate: { color: colors.muted, fontSize: 9, marginTop: 15 }, latestRecordFact: { color: colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 24, marginTop: 9 }, latestRecordFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 }, latestRecordEmotion: { color: '#6E6280', backgroundColor: '#E7E1EE', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5, fontSize: 9, fontWeight: '600' }, latestRecordLink: { color: colors.sageDeep, fontSize: 10, fontWeight: '600' },
   journeyEmptyCard: { backgroundColor: '#F2F1F5' }, journeyEmptyTitle: { color: colors.ink, fontSize: 21, fontWeight: '600', lineHeight: 29, marginTop: 20 }, journeyEmptyText: { color: colors.muted, fontSize: 11, lineHeight: 19, marginTop: 10 }, journeyPrinciples: { gap: 10, marginTop: 14 }, journeyPrinciple: { borderWidth: 1, borderColor: colors.line, borderRadius: 14, backgroundColor: colors.card, padding: 15 }, journeyPrincipleNumber: { color: colors.lilac, fontSize: 9 }, journeyPrincipleTitle: { color: colors.ink, fontSize: 14, fontWeight: '600', marginTop: 8 }, journeyPrincipleText: { color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 5 },
-  journeySummaryCard: { backgroundColor: '#F2F5ED' }, journeySummaryTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }, journeySummaryTitle: { color: colors.ink, fontSize: 19, fontWeight: '600', lineHeight: 27, marginTop: 15 }, journeySummaryNumber: { color: colors.sageDeep, fontSize: 38, fontWeight: '600', lineHeight: 42 }, journeySummaryText: { color: colors.muted, fontSize: 11, lineHeight: 18, marginTop: 11 }, journeyRecordList: { gap: 12, marginTop: 14 }, journeyRecordCard: { borderWidth: 1, borderColor: colors.line, borderRadius: 17, backgroundColor: colors.card, padding: 17 }, journeyRecordMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, journeyRecordDate: { color: colors.muted, fontSize: 9 }, journeyRecordEmotion: { color: '#6E6280', backgroundColor: '#EEEAF2', borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, fontSize: 9, fontWeight: '600' }, journeyRecordFact: { color: colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 23, marginTop: 12 }, journeyRecordQuestion: { color: '#6A725F', backgroundColor: '#EEF1E9', borderRadius: 10, padding: 10, fontSize: 10, lineHeight: 16, marginTop: 11 }, journeyRecordOpen: { color: colors.sageDeep, fontSize: 9, fontWeight: '600', marginTop: 13 },
-  recordDetailTitle: { color: colors.ink, fontSize: 23, fontWeight: '600', lineHeight: 31, marginTop: 13 }, recordDetailList: { gap: 10 }, recordDetailItem: { borderRadius: 13, backgroundColor: '#F0F0E9', padding: 14, borderLeftWidth: 3, borderLeftColor: '#CBD4C5' }, recordDetailLabel: { color: '#7C8279', fontSize: 9, fontWeight: '600' }, recordDetailValue: { color: colors.ink, fontSize: 12, lineHeight: 20, marginTop: 7 }, localOnlyNotice: { borderRadius: 13, backgroundColor: '#E8EEE4', padding: 14, marginTop: 16 }, localOnlyTitle: { color: colors.sageDeep, fontSize: 10, fontWeight: '700' }, localOnlyText: { color: '#6F786B', fontSize: 10, lineHeight: 17, marginTop: 6 },
+  journeySummaryCard: { backgroundColor: '#F2F5ED' }, journeySummaryTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }, journeySummaryCopy: { flex: 1 }, journeySummaryTitle: { color: colors.ink, fontSize: 19, fontWeight: '600', lineHeight: 27, marginTop: 15 }, journeySummaryNumber: { color: colors.sageDeep, fontSize: 38, fontWeight: '600', lineHeight: 42 }, journeySummaryText: { color: colors.muted, fontSize: 11, lineHeight: 18, marginTop: 11 }, journeyToolsCard: { borderWidth: 1, borderColor: colors.line, borderRadius: 17, backgroundColor: '#FFFDF8', padding: 14, marginTop: 14 }, journeySearchRow: { minHeight: 46, borderRadius: 12, backgroundColor: '#F0F0E9', flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12 }, journeySearchIcon: { color: '#7C8279', fontSize: 19, marginRight: 8 }, journeySearchInput: { flex: 1, minHeight: 46, color: colors.ink, fontSize: 12, paddingVertical: 9 }, journeySearchClear: { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' }, journeySearchClearText: { color: '#8C9188', fontSize: 20 }, journeyEmotionFilters: { gap: 7, paddingTop: 12, paddingBottom: 3 }, journeyFilterChip: { minHeight: 36, borderRadius: 18, borderWidth: 1, borderColor: colors.line, backgroundColor: '#FFFDF8', paddingHorizontal: 13, alignItems: 'center', justifyContent: 'center' }, journeyFilterChipActive: { borderColor: '#CBD8C5', backgroundColor: '#E7EEE4' }, journeyFilterChipText: { color: '#777D74', fontSize: 10, fontWeight: '500' }, journeyFilterChipTextActive: { color: colors.sageDeep, fontWeight: '700' }, journeyResultCount: { color: '#969A91', fontSize: 9, marginTop: 10 }, journeyRecordList: { marginTop: 14 }, journeyTimelineRow: { flexDirection: 'row', alignItems: 'stretch' }, journeyTimelineRail: { width: 24, alignItems: 'center' }, journeyTimelineDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: colors.sageDeep, marginTop: 21 }, journeyTimelineLine: { flex: 1, width: 1, minHeight: 18, backgroundColor: '#D9DDD4', marginVertical: 4 }, journeyRecordCard: { flex: 1, borderWidth: 1, borderColor: colors.line, borderRadius: 17, backgroundColor: colors.card, padding: 17, marginBottom: 12 }, journeyRecordMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, journeyRecordDate: { color: colors.muted, fontSize: 9 }, journeyRecordEmotion: { color: '#6E6280', backgroundColor: '#EEEAF2', borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, fontSize: 9, fontWeight: '600' }, journeyRecordFact: { color: colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 23, marginTop: 12 }, journeyRecordQuestion: { color: '#6A725F', backgroundColor: '#EEF1E9', borderRadius: 10, padding: 10, fontSize: 10, lineHeight: 16, marginTop: 11 }, journeyRecordOpen: { color: colors.sageDeep, fontSize: 9, fontWeight: '600', marginTop: 13 }, journeyNoResults: { marginTop: 14, backgroundColor: '#F5F3EE' }, journeyNoResultsTitle: { color: colors.ink, fontSize: 17, fontWeight: '600' }, journeyNoResultsText: { color: colors.muted, fontSize: 10, lineHeight: 17, marginTop: 8 }, journeyResetButton: { alignSelf: 'flex-start', minHeight: 40, justifyContent: 'center', marginTop: 10 }, journeyResetButtonText: { color: colors.sageDeep, fontSize: 10, fontWeight: '700' },
+  recordUpdatedAt: { color: '#92968E', fontSize: 9, marginTop: 7 }, recordDetailTitle: { color: colors.ink, fontSize: 23, fontWeight: '600', lineHeight: 31, marginTop: 13 }, recordDetailList: { gap: 10 }, recordDetailItem: { borderRadius: 13, backgroundColor: '#F0F0E9', padding: 14, borderLeftWidth: 3, borderLeftColor: '#CBD4C5' }, recordDetailLabel: { color: '#7C8279', fontSize: 9, fontWeight: '600' }, recordDetailValue: { color: colors.ink, fontSize: 12, lineHeight: 20, marginTop: 7 }, localOnlyNotice: { borderRadius: 13, backgroundColor: '#E8EEE4', padding: 14, marginTop: 16 }, localOnlyTitle: { color: colors.sageDeep, fontSize: 10, fontWeight: '700' }, localOnlyText: { color: '#6F786B', fontSize: 10, lineHeight: 17, marginTop: 6 },
   settingsDataCard: { borderWidth: 1, borderColor: colors.line, borderRadius: 15, backgroundColor: colors.card, padding: 15, marginTop: 12 }, settingsDataLabel: { color: colors.muted, fontSize: 9, fontWeight: '600' }, settingsDataValue: { color: colors.ink, fontSize: 20, fontWeight: '600', marginTop: 9 }, settingsDataText: { color: colors.muted, fontSize: 10, lineHeight: 17, marginTop: 7 }, dangerTextButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 14 }, dangerTextButtonLabel: { color: '#A34F3B', fontSize: 11, fontWeight: '600' }, deleteConfirmCard: { borderWidth: 1, borderColor: 'rgba(163,79,59,0.24)', borderRadius: 14, backgroundColor: '#FAECE7', padding: 14, marginTop: 14 }, deleteConfirmTitle: { color: '#8F4534', fontSize: 14, fontWeight: '700' }, deleteConfirmText: { color: '#8C645A', fontSize: 10, lineHeight: 16, marginTop: 6 }, deleteConfirmActions: { flexDirection: 'row', gap: 9, marginTop: 13 }, deleteCancelButton: { flex: 1, minHeight: 42, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(43,48,43,0.16)', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card }, deleteCancelLabel: { color: colors.ink, fontSize: 10, fontWeight: '600' }, deleteButton: { flex: 1, minHeight: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#9A4D3A' }, deleteButtonLabel: { color: '#FFF', fontSize: 10, fontWeight: '700' },
-  clarityFieldLabel: { color: '#737970', fontSize: 10, marginTop: 14, marginBottom: 7 }, clarityInput: { minHeight: 70, borderWidth: 1, borderColor: 'rgba(43,48,43,0.18)', borderRadius: 11, padding: 12, color: colors.ink, fontSize: 11, lineHeight: 17, textAlignVertical: 'top', backgroundColor: '#FFFDF8' },
+  stepBackButton: { alignSelf: 'flex-start', minHeight: 36, justifyContent: 'center', marginTop: -10, marginBottom: 6 }, stepBackButtonText: { color: colors.sageDeep, fontSize: 10, fontWeight: '600' }, clarityFieldLabel: { color: '#737970', fontSize: 10, marginTop: 14, marginBottom: 7 }, clarityInput: { minHeight: 70, borderWidth: 1, borderColor: 'rgba(43,48,43,0.18)', borderRadius: 11, padding: 12, color: colors.ink, fontSize: 11, lineHeight: 17, textAlignVertical: 'top', backgroundColor: '#FFFDF8' },
 });
