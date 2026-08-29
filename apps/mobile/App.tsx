@@ -6,6 +6,7 @@ import {
   Platform,
   Pressable,
   SafeAreaView,
+  Share,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -25,9 +26,16 @@ import {
   getApiHealth,
 } from './src/api';
 import { loadStoredBaziChart } from './src/chartStorage';
+import {
+  ClarityRecord,
+  clearClarityRecords,
+  deleteClarityRecord,
+  loadClarityRecords,
+  saveClarityRecord,
+} from './src/clarityStorage';
 
 type ViewKey = 'daily' | 'journey' | 'year';
-type ModalKey = 'clarity' | 'safety' | 'profile' | 'bazi' | null;
+type ModalKey = 'clarity' | 'clarity-record' | 'safety' | 'profile' | 'bazi' | null;
 
 const colors = {
   paper: '#F7F5EF',
@@ -51,8 +59,8 @@ function ArrowButton({ label = '→', onPress }: { label?: string; onPress: () =
   return <Pressable onPress={onPress} style={({ pressed }) => [styles.arrowButton, pressed && styles.pressed]}><Text style={styles.arrowButtonText}>{label}</Text></Pressable>;
 }
 
-function PrimaryButton({ label, onPress, done = false }: { label: string; onPress: () => void; done?: boolean }) {
-  return <Pressable onPress={onPress} style={({ pressed }) => [styles.primaryButton, done && styles.primaryButtonDone, pressed && styles.pressed]}><Text style={styles.primaryButtonLabel}>{label}</Text><Text style={styles.primaryButtonArrow}>{done ? '✓' : '→'}</Text></Pressable>;
+function PrimaryButton({ label, onPress, done = false, disabled = false }: { label: string; onPress: () => void; done?: boolean; disabled?: boolean }) {
+  return <Pressable disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.primaryButton, done && styles.primaryButtonDone, pressed && styles.pressed, disabled && styles.disabled]}><Text style={styles.primaryButtonLabel}>{label}</Text><Text style={styles.primaryButtonArrow}>{done ? '✓' : '→'}</Text></Pressable>;
 }
 
 function Header({ onSafety, onProfile, apiOnline }: { onSafety: () => void; onProfile: () => void; apiOnline: boolean }) {
@@ -98,8 +106,49 @@ function useSavedBaziContext(revision: number): SavedBaziContextState {
   return state;
 }
 
-function DailyScreen({ onClarity, onBazi, revision }: { onClarity: () => void; onBazi: () => void; revision: number }) {
-  const { loading, context, timezone, error } = useSavedBaziContext(revision);
+type ClarityRecordsState = {
+  loading: boolean;
+  records: ClarityRecord[];
+  error: string;
+};
+
+function useClarityRecords(revision: number): ClarityRecordsState {
+  const [state, setState] = useState<ClarityRecordsState>({ loading: true, records: [], error: '' });
+  useEffect(() => {
+    let active = true;
+    setState(previous => ({ ...previous, loading: true, error: '' }));
+    loadClarityRecords()
+      .then(records => {
+        if (active) setState({ loading: false, records, error: '' });
+      })
+      .catch(loadError => {
+        if (!active) return;
+        setState({
+          loading: false,
+          records: [],
+          error: loadError instanceof Error ? loadError.message : '本机记录读取失败，请稍后重试。',
+        });
+      });
+    return () => { active = false; };
+  }, [revision]);
+  return state;
+}
+
+function formatClarityDate(value: string, includeYear = false): string {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('zh-CN', {
+    ...(includeYear ? { year: 'numeric' as const } : {}),
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+}
+
+function DailyScreen({ onClarity, onBazi, onOpenRecord, latestRecord, revision }: { onClarity: () => void; onBazi: () => void; onOpenRecord: (record: ClarityRecord) => void; latestRecord: ClarityRecord | null; revision: number }) {
+  const { loading, context, chartInput, timezone, error } = useSavedBaziContext(revision);
   const dateLabel = context?.as_of_local.replace('T', ' ').slice(0, 16) ?? new Date().toLocaleDateString('zh-CN');
   return <View>
     <View style={styles.heading}><Text style={styles.eyebrow}>TODAY · {dateLabel}</Text><Text style={styles.pageTitle}>今天，只显示有依据的内容。</Text><Text style={styles.pageSubtitle}>当前版本不根据命理自动生成行动建议；这里先提供可复算的周期位置和一个不替你下结论的梳理工具。</Text></View>
@@ -111,15 +160,22 @@ function DailyScreen({ onClarity, onBazi, revision }: { onClarity: () => void; o
       <View style={[styles.card, styles.todayCycleHero]}><View style={styles.todayCycleTop}><Kicker label="当前确定性周期" color={colors.terracotta} /><Text style={styles.todayVerified}>校验通过</Text></View><View style={styles.todayPillarRow}><View style={styles.todayPillarItem}><Text style={styles.todayPillarLabel}>流年</Text><Text style={styles.todayPillarValue}>{context.annual_cycle.pillar.value}</Text><Text style={styles.todayPillarMeta}>{context.annual_cycle.label_year}</Text></View><View style={styles.todayPillarDivider} /><View style={styles.todayPillarItem}><Text style={styles.todayPillarLabel}>流月</Text><Text style={styles.todayPillarValue}>{context.monthly_cycle.pillar.value}</Text><Text style={styles.todayPillarMeta}>第 {context.monthly_cycle.sequence_from_lichun} 月</Text></View></View><View style={styles.todayBoundaryBox}><Text style={styles.todayBoundaryLabel}>下次流月交接 · {context.monthly_cycle.end_boundary.name}</Text><Text style={styles.todayBoundaryValue}>{formatCycleBoundary(context.monthly_cycle.end_boundary.boundary_time_utc, timezone)}</Text></View></View>
       <View style={[styles.card, styles.todayChartCard]}><Kicker label="命盘底图" color={colors.sage} /><View style={styles.todayChartPillars}>{(['year', 'month', 'day', 'hour'] as const).map(key => <View key={key} style={styles.todayChartPillar}><Text style={styles.todayChartLabel}>{{ year: '年', month: '月', day: '日', hour: '时' }[key]}</Text><Text style={styles.todayChartValue}>{context.chart.pillars[key].value}</Text></View>)}</View><Text style={styles.todayEvidence}>{context.audit.primary_engine} × {context.audit.verification_engine}</Text><Text style={styles.todayEvidence}>{context.chart.rule_profile.timezone_database} · {context.chart.calculation_hash.slice(0, 12)}</Text><Pressable onPress={onBazi} style={styles.todayTextButton}><Text style={styles.todayTextButtonLabel}>查看或更新命盘 →</Text></Pressable></View>
     </> : null}
-    <Pressable onPress={onClarity} style={[styles.card, styles.todayClarityCard]}><Kicker label="不依赖命理" color={colors.blue} /><View style={styles.quickRow}><View style={{ flex: 1 }}><Text style={styles.quickTitle}>我现在有点乱</Text><Text style={styles.quickText}>只整理你实际填写的事实、感受、解释和担心。</Text></View><ArrowButton onPress={onClarity} /></View></Pressable>
+    {latestRecord ? <Pressable onPress={() => onOpenRecord(latestRecord)} style={[styles.card, styles.latestRecordCard]}><Kicker label="最近一次现实记录" color={colors.lilac} /><Text style={styles.latestRecordDate}>{formatClarityDate(latestRecord.createdAt)}</Text><Text style={styles.latestRecordFact} numberOfLines={3}>{latestRecord.fact}</Text><View style={styles.latestRecordFooter}><Text style={styles.latestRecordEmotion}>{latestRecord.emotion}</Text><Text style={styles.latestRecordLink}>打开记录 →</Text></View></Pressable> : null}
+    <Pressable onPress={onClarity} style={[styles.card, styles.todayClarityCard]}><Kicker label="不依赖命理" color={colors.blue} /><View style={styles.quickRow}><View style={{ flex: 1 }}><Text style={styles.quickTitle}>{latestRecord ? '再梳理一件现实里的事' : '我现在有点乱'}</Text><Text style={styles.quickText}>只整理你实际填写的事实、感受、解释和担心，并由你决定是否保存。</Text></View><ArrowButton onPress={onClarity} /></View></Pressable>
+    {!loading && context?.user_visible && chartInput ? <PersonalizedInterpretationPanel chartInput={chartInput} context={context} /> : null}
   </View>;
 }
 
-function JourneyScreen({ onClarity }: { onClarity: () => void }) {
+function JourneyScreen({ records, loading, error, onClarity, onOpenRecord }: { records: ClarityRecord[]; loading: boolean; error: string; onClarity: () => void; onOpenRecord: (record: ClarityRecord) => void }) {
   return <View>
-    <View style={styles.heading}><Text style={styles.eyebrow}>JOURNEY · 人生章节</Text><Text style={styles.pageTitle}>没有真实记录，就不编一段人生进度。</Text><Text style={styles.pageSubtitle}>章节功能需要用户实际目标、事件、验证点和时间线；这些数据尚未接入前，知时不会显示虚构的“第 18 天”或完成比例。</Text></View>
-    <View style={[styles.card, styles.journeyEmptyCard]}><Kicker label="真实记录模块待接入" color={colors.lilac} /><Text style={styles.journeyEmptyTitle}>当前没有可展示的人生章节。</Text><Text style={styles.journeyEmptyText}>后续章节会由你创建，进度只根据你保存的事件和验证点更新，不由命理或模型替你决定。</Text><PrimaryButton label="先做一次事实梳理" onPress={onClarity} /></View>
-    <View style={styles.journeyPrinciples}><View style={styles.journeyPrinciple}><Text style={styles.journeyPrincipleNumber}>01</Text><Text style={styles.journeyPrincipleTitle}>你定义问题</Text><Text style={styles.journeyPrincipleText}>不预设你正在换工作、搬家或处理关系。</Text></View><View style={styles.journeyPrinciple}><Text style={styles.journeyPrincipleNumber}>02</Text><Text style={styles.journeyPrincipleTitle}>事件才算进度</Text><Text style={styles.journeyPrincipleText}>没有保存的事实，就不显示百分比或趋势。</Text></View><View style={styles.journeyPrinciple}><Text style={styles.journeyPrincipleNumber}>03</Text><Text style={styles.journeyPrincipleTitle}>解释与事实分开</Text><Text style={styles.journeyPrincipleText}>文化视角会单独标识，不冒充现实证据。</Text></View></View>
+    <View style={styles.heading}><Text style={styles.eyebrow}>JOURNEY · 现实记录</Text><Text style={styles.pageTitle}>把发生过的事，慢慢连成自己的章节。</Text><Text style={styles.pageSubtitle}>事实、感受、解释和担心分开保存。这里不根据命理替你编故事，也不用虚构的完成比例催促你。</Text></View>
+    {loading ? <View style={[styles.card, styles.yearLoadingCard]}><ActivityIndicator color={colors.sageDeep} /><Text style={styles.yearLoadingText}>正在读取本机记录…</Text></View> : null}
+    {!loading && error ? <View style={[styles.card, styles.yearErrorCard]}><Kicker label="读取失败" color={colors.terracotta} /><Text style={styles.journeyEmptyTitle}>记录暂时没有读出来。</Text><Text style={styles.journeyEmptyText}>{error}</Text></View> : null}
+    {!loading && !error && records.length === 0 ? <View style={[styles.card, styles.journeyEmptyCard]}><Kicker label="从第一条真实记录开始" color={colors.lilac} /><Text style={styles.journeyEmptyTitle}>这里还没有内容。</Text><Text style={styles.journeyEmptyText}>写下一件已经发生的事，再把感受、解释和担心分开。保存后就能从这里回看。</Text><PrimaryButton label="做一次事实梳理" onPress={onClarity} /></View> : null}
+    {!loading && !error && records.length > 0 ? <>
+      <View style={[styles.card, styles.journeySummaryCard]}><View style={styles.journeySummaryTop}><View><Kicker label="只统计你保存的内容" color={colors.sage} /><Text style={styles.journeySummaryTitle}>已经留下 {records.length} 次梳理</Text></View><Text style={styles.journeySummaryNumber}>{records.length}</Text></View><Text style={styles.journeySummaryText}>最近一次：{formatClarityDate(records[0].createdAt)}。这些记录只保存在当前设备，可在设置中统一清除。</Text><PrimaryButton label="记录一件新发生的事" onPress={onClarity} /></View>
+      <View style={styles.journeyRecordList}>{records.map(record => <Pressable key={record.id} onPress={() => onOpenRecord(record)} style={({ pressed }) => [styles.journeyRecordCard, pressed && styles.pressed]}><View style={styles.journeyRecordMeta}><Text style={styles.journeyRecordDate}>{formatClarityDate(record.createdAt, true)}</Text><Text style={styles.journeyRecordEmotion}>{record.emotion}</Text></View><Text style={styles.journeyRecordFact} numberOfLines={3}>{record.fact}</Text>{record.nextQuestion ? <Text style={styles.journeyRecordQuestion} numberOfLines={2}>下一步确认：{record.nextQuestion}</Text> : null}<Text style={styles.journeyRecordOpen}>查看事实、解释与担心 →</Text></Pressable>)}</View>
+    </> : null}
   </View>;
 }
 
@@ -258,18 +314,39 @@ function YearScreen({ onBazi, revision }: { onBazi: () => void; revision: number
   </View>;
 }
 
-function ClaritySheet({ step, setStep, onClose }: { step: number; setStep: (step: number) => void; onClose: () => void }) {
+function ClaritySheet({ step, setStep, onClose, onSaved }: { step: number; setStep: (step: number) => void; onClose: () => void; onSaved: (record: ClarityRecord) => void }) {
   const [input, setInput] = useState('');
   const [emotion, setEmotion] = useState('');
   const [interpretation, setInterpretation] = useState('');
   const [worry, setWorry] = useState('');
   const [question, setQuestion] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
   const emotions = ['害怕', '愤怒', '无力', '羞耻', '后悔', '失望', '麻木', '其他'];
+  const complete = async () => {
+    if (!input.trim() || !emotion) return;
+    setSaving(true);
+    setSaveError('');
+    try {
+      const record = await saveClarityRecord({
+        fact: input,
+        emotion,
+        interpretation,
+        worry,
+        nextQuestion: question,
+      });
+      onSaved(record);
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : '这次梳理没有保存成功，请重试。');
+    } finally {
+      setSaving(false);
+    }
+  };
   return <Sheet title="我现在有点乱" onClose={onClose}>
     <View style={styles.sheetProgress}>{[1, 2, 3].map(i => <View key={i} style={[styles.sheetProgressBar, i <= step && styles.sheetProgressActive]} />)}</View>
-    {step === 1 && <><Text style={styles.sheetEyebrow}>01 · 发生了什么？</Text><Text style={styles.sheetTitle}>只写你确认发生的事。</Text><Text style={styles.sheetSubtitle}>不用组织得很完整，也先不要解释原因。</Text><TextInput value={input} onChangeText={setInput} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我收到一条消息，对方没有说明截止时间。" placeholderTextColor="#A9ADA4" style={styles.textArea} /><Text style={styles.inputVoiceHint}>可直接打字，也可以使用 iPhone 键盘听写。</Text><PrimaryButton label={input.trim() ? '继续' : '先写下一件事实'} onPress={() => { if (input.trim()) setStep(2); }} /></>}
+    {step === 1 && <><Text style={styles.sheetEyebrow}>01 · 发生了什么？</Text><Text style={styles.sheetTitle}>只写你确认发生的事。</Text><Text style={styles.sheetSubtitle}>不用组织得很完整，也先不要解释原因。</Text><TextInput value={input} onChangeText={setInput} maxLength={2000} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我收到一条消息，对方没有说明截止时间。" placeholderTextColor="#A9ADA4" style={styles.textArea} /><Text style={styles.inputVoiceHint}>可直接打字，也可以使用 iPhone 键盘听写。</Text><PrimaryButton label={input.trim() ? '继续' : '先写下一件事实'} onPress={() => { if (input.trim()) setStep(2); }} /></>}
     {step === 2 && <><Text style={styles.sheetEyebrow}>02 · 现在最强烈的感受是？</Text><Text style={styles.sheetTitle}>先命名它，不把它当结论。</Text><Text style={styles.sheetSubtitle}>这里不会根据情绪自动推断你的处境。</Text><View style={styles.emotionGrid}>{emotions.map(item => <Pressable key={item} onPress={() => setEmotion(item)} style={[styles.emotionButton, emotion === item && styles.emotionSelected]}><Text>{item}</Text></Pressable>)}</View><PrimaryButton label={emotion ? '继续' : '先选择一种感受'} onPress={() => { if (emotion) setStep(3); }} /></>}
-    {step === 3 && <><Text style={styles.sheetEyebrow}>03 · 把事实、解释和担心分开。</Text><Text style={styles.sheetTitle}>以下内容全部来自你。</Text><View style={styles.triadItem}><Text style={styles.triadLabel}>已经发生的事实</Text><Text style={styles.triadText}>{input}</Text></View><View style={styles.triadItem}><Text style={styles.triadLabel}>当下感受</Text><Text style={styles.triadText}>{emotion}</Text></View><Text style={styles.clarityFieldLabel}>你对事实的解释</Text><TextInput value={interpretation} onChangeText={setInterpretation} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我觉得对方可能不重视这件事。" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.clarityFieldLabel}>你担心未来会发生什么</Text><TextInput value={worry} onChangeText={setWorry} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我担心这会影响后续安排。" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.clarityFieldLabel}>下一步只确认哪一个问题？</Text><TextInput value={question} onChangeText={setQuestion} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：这件事的截止时间是什么？" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.inputVoiceHint}>可直接打字，也可以使用 iPhone 键盘听写。</Text><View style={styles.recommendation}><Text style={styles.triadLabel}>本次梳理</Text><Text style={styles.recommendationTitle}>{question.trim() || '写下一个可以向现实确认的问题。'}</Text><Text style={styles.triadText}>知时没有替你判断，也没有根据命理生成建议。当前 MVP 不保存这次文字记录。</Text></View><PrimaryButton label="完成本次梳理" onPress={onClose} /></>}
+    {step === 3 && <><Text style={styles.sheetEyebrow}>03 · 把事实、解释和担心分开。</Text><Text style={styles.sheetTitle}>以下内容全部来自你。</Text><View style={styles.triadItem}><Text style={styles.triadLabel}>已经发生的事实</Text><Text style={styles.triadText}>{input}</Text></View><View style={styles.triadItem}><Text style={styles.triadLabel}>当下感受</Text><Text style={styles.triadText}>{emotion}</Text></View><Text style={styles.clarityFieldLabel}>你对事实的解释</Text><TextInput value={interpretation} onChangeText={setInterpretation} maxLength={1200} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我觉得对方可能不重视这件事。" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.clarityFieldLabel}>你担心未来会发生什么</Text><TextInput value={worry} onChangeText={setWorry} maxLength={1200} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：我担心这会影响后续安排。" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.clarityFieldLabel}>下一步只确认哪一个问题？</Text><TextInput value={question} onChangeText={setQuestion} maxLength={600} multiline textContentType="none" autoCorrect spellCheck placeholder="例如：这件事的截止时间是什么？" placeholderTextColor="#A9ADA4" style={styles.clarityInput} /><Text style={styles.inputVoiceHint}>可直接打字，也可以使用 iPhone 键盘听写。</Text><View style={styles.recommendation}><Text style={styles.triadLabel}>本次梳理</Text><Text style={styles.recommendationTitle}>{question.trim() || '暂时没有下一步问题也可以保存。'}</Text><Text style={styles.triadText}>知时没有替你判断，也没有根据命理生成建议。保存后可在“章节”页回看或删除，内容不会发送到服务器。</Text></View>{saveError ? <View style={styles.interpretationError}><Text style={styles.interpretationErrorText}>{saveError}</Text></View> : null}<PrimaryButton disabled={saving} label={saving ? '正在保存到本机…' : '保存这次梳理'} done onPress={complete} /></>}
   </Sheet>;
 }
 
@@ -277,12 +354,70 @@ function Sheet({ title, children, onClose }: { title: string; children: React.Re
   return <View style={styles.sheet}><View style={styles.sheetHeader}><Text style={styles.sheetHeaderTitle}>{title}</Text><Pressable onPress={onClose}><Text style={styles.closeText}>×</Text></Pressable></View><ScrollView contentContainerStyle={styles.sheetContent} keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} keyboardShouldPersistTaps="always" automaticallyAdjustKeyboardInsets>{children}</ScrollView></View>;
 }
 
-function SafetySheet({ onClose }: { onClose: () => void }) {
-  return <Sheet title="安全、隐私与使用条款" onClose={onClose}><View style={styles.safetyIcon}><Text>♡</Text></View><Text style={styles.sheetTitle}>现实优先，命理只是文化视角。</Text><Text style={styles.sheetSubtitle}>知时面向 18 岁以上用户，不替代医疗、法律、财务或心理服务，也不会用“注定”“必然”制造恐惧。涉及高风险内容时，请联系专业人士或可信任的人。</Text>{['不预测灾祸、生死和疾病', '不替你做重大人生决定', '确定性计算与 AI 文化解释分层显示', '当前 MVP 不销售数据或投放行为广告'].map(item => <Text key={item} style={styles.safetyItem}>✓  {item}</Text>)}<View style={styles.legalNoticeCard}><Text style={styles.legalNoticeTitle}>美国与欧洲客户基线</Text><Text style={styles.legalNoticeText}>排盘按你提交的出生日期、时间、地点和规则正常计算。选择非精确时间不会停止计算，但实际时刻偏差可能改变四柱、大运、流年和流月。</Text><Text style={styles.legalNoticeText}>出生资料会发送到配置的计算 API；当前 MVP 不主动持久化计算请求。只有你点击“保存”后，命盘才保存在本机并可随时清除。请勿在未获授权时填写他人的个人资料。</Text><Text style={styles.legalNoticeText}>个性化解释会明确标识为 AI 生成。只有你主动点击生成后，最少量的已审计命盘事实与可选问题才会发送给 DeepSeek；确定性排盘不由 AI 生成。</Text><Text style={styles.legalNoticeText}>你可依据适用的 GDPR、UK GDPR 或美国州隐私法请求访问、更正、删除或选择退出；法定消费者权利不因本提示而被排除。</Text></View><PrimaryButton label="我知道了" onPress={onClose} /></Sheet>;
+function ClarityRecordSheet({ record, onClose, onDelete }: { record: ClarityRecord; onClose: () => void; onDelete: (id: string) => Promise<void> }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const remove = async () => {
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await onDelete(record.id);
+    } catch (error) {
+      setDeleteError(error instanceof Error ? error.message : '记录没有删除成功，请重试。');
+      setDeleting(false);
+    }
+  };
+  const fields = [
+    ['已经发生的事实', record.fact],
+    ['当下感受', record.emotion],
+    ['当时的解释', record.interpretation],
+    ['担心的事情', record.worry],
+    ['下一步想确认', record.nextQuestion],
+  ].filter(([, value]) => value);
+  return <Sheet title="现实记录" onClose={onClose}>
+    <Text style={styles.sheetEyebrow}>{formatClarityDate(record.createdAt, true)}</Text>
+    <Text style={styles.recordDetailTitle}>这次梳理由你自己填写。</Text>
+    <Text style={styles.sheetSubtitle}>知时只负责把不同层次分开保存，没有根据命盘或模型补写内容。</Text>
+    <View style={styles.recordDetailList}>{fields.map(([label, value]) => <View key={label} style={styles.recordDetailItem}><Text style={styles.recordDetailLabel}>{label}</Text><Text style={styles.recordDetailValue}>{value}</Text></View>)}</View>
+    <View style={styles.localOnlyNotice}><Text style={styles.localOnlyTitle}>保存在本机</Text><Text style={styles.localOnlyText}>这条记录不会自动发送给知时 API 或 DeepSeek。卸载 App、清除应用数据或主动删除后将无法恢复。</Text></View>
+    {deleteError ? <View style={styles.interpretationError}><Text style={styles.interpretationErrorText}>{deleteError}</Text></View> : null}
+    {!confirmingDelete ? <Pressable onPress={() => setConfirmingDelete(true)} style={styles.dangerTextButton}><Text style={styles.dangerTextButtonLabel}>删除这条记录</Text></Pressable> : <View style={styles.deleteConfirmCard}><Text style={styles.deleteConfirmTitle}>确定永久删除？</Text><Text style={styles.deleteConfirmText}>删除后无法恢复。</Text><View style={styles.deleteConfirmActions}><Pressable disabled={deleting} onPress={() => setConfirmingDelete(false)} style={styles.deleteCancelButton}><Text style={styles.deleteCancelLabel}>取消</Text></Pressable><Pressable disabled={deleting} onPress={remove} style={[styles.deleteButton, deleting && styles.disabled]}><Text style={styles.deleteButtonLabel}>{deleting ? '正在删除…' : '确认删除'}</Text></Pressable></View></View>}
+  </Sheet>;
 }
 
-function ProfileSheet({ onClose }: { onClose: () => void }) {
-  return <Sheet title="设置" onClose={onClose}><Text style={styles.sheetEyebrow}>当前 MVP</Text><Text style={styles.sheetTitle}>账户与偏好尚未接入。</Text><Text style={styles.sheetSubtitle}>知时目前不会假装记住姓名、关注领域或状态。命盘只有在你明确点击保存后才保留在本机，可从“命盘”页随时清除。</Text><View style={styles.legalNoticeCard}><Text style={styles.legalNoticeTitle}>已生效的设置</Text><Text style={styles.legalNoticeText}>排盘时选择的时间模式、换日规则、起运算法和出生时间精度会写入该命盘的计算哈希。其他个性化设置尚未启用。</Text></View><PrimaryButton label="关闭" onPress={onClose} /></Sheet>;
+function SafetySheet({ onClose }: { onClose: () => void }) {
+  return <Sheet title="安全、隐私与使用条款" onClose={onClose}><View style={styles.safetyIcon}><Text>♡</Text></View><Text style={styles.sheetTitle}>现实优先，命理只是文化视角。</Text><Text style={styles.sheetSubtitle}>知时面向 18 岁以上用户，不替代医疗、法律、财务或心理服务，也不会用“注定”“必然”制造恐惧。涉及高风险内容时，请联系专业人士或可信任的人。</Text>{['不预测灾祸、生死和疾病', '不替你做重大人生决定', '确定性计算与 AI 文化解释分层显示', '当前 MVP 不销售数据或投放行为广告'].map(item => <Text key={item} style={styles.safetyItem}>✓  {item}</Text>)}<View style={styles.legalNoticeCard}><Text style={styles.legalNoticeTitle}>美国与欧洲客户基线</Text><Text style={styles.legalNoticeText}>排盘按你提交的出生日期、时间、地点和规则正常计算。选择非精确时间不会停止计算，但实际时刻偏差可能改变四柱、大运、流年和流月。</Text><Text style={styles.legalNoticeText}>出生资料会发送到配置的计算 API；当前 MVP 不主动持久化计算请求。你主动保存的命盘和事实梳理记录保存在当前设备，可分别查看或清除。请勿在未获授权时填写他人的个人资料。</Text><Text style={styles.legalNoticeText}>个性化解释会明确标识为 AI 生成。只有你主动点击生成后，最少量的已审计命盘事实与可选问题才会发送给 DeepSeek；事实梳理记录不会自动发送，确定性排盘也不由 AI 生成。</Text><Text style={styles.legalNoticeText}>你可依据适用的 GDPR、UK GDPR 或美国州隐私法请求访问、更正、删除或选择退出；法定消费者权利不因本提示而被排除。</Text></View><PrimaryButton label="我知道了" onPress={onClose} /></Sheet>;
+}
+
+function ProfileSheet({ onClose, onOpenBazi, recordCount, onExportRecords, onClearRecords }: { onClose: () => void; onOpenBazi: () => void; recordCount: number; onExportRecords: () => Promise<void>; onClearRecords: () => Promise<void> }) {
+  const [confirmingClear, setConfirmingClear] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [clearError, setClearError] = useState('');
+  const [exportError, setExportError] = useState('');
+  const exportRecords = async () => {
+    setExporting(true);
+    setExportError('');
+    try {
+      await onExportRecords();
+    } catch (error) {
+      setExportError(error instanceof Error ? error.message : '记录暂时无法导出，请重试。');
+    } finally {
+      setExporting(false);
+    }
+  };
+  const clearRecords = async () => {
+    setClearing(true);
+    setClearError('');
+    try {
+      await onClearRecords();
+    } catch (error) {
+      setClearError(error instanceof Error ? error.message : '本机记录没有清除成功，请重试。');
+      setClearing(false);
+    }
+  };
+  return <Sheet title="设置与本机数据" onClose={onClose}><Text style={styles.sheetEyebrow}>LOCAL FIRST · 本机优先</Text><Text style={styles.sheetTitle}>你保存什么，由你决定。</Text><Text style={styles.sheetSubtitle}>知时目前不要求注册账户。命盘与事实梳理记录保存在当前设备，AI 生成内容仍不自动保存。</Text><View style={styles.settingsDataCard}><Text style={styles.settingsDataLabel}>事实梳理记录</Text><Text style={styles.settingsDataValue}>{recordCount} 条</Text><Text style={styles.settingsDataText}>可在“章节”逐条查看和删除，也可以主动导出为文字或在这里统一清除。</Text>{recordCount > 0 ? <PrimaryButton disabled={exporting} label={exporting ? '正在打开系统分享…' : '导出全部记录'} onPress={exportRecords} /> : null}</View><View style={styles.settingsDataCard}><Text style={styles.settingsDataLabel}>命盘资料</Text><Text style={styles.settingsDataValue}>单独管理</Text><Text style={styles.settingsDataText}>时间模式、换日规则、起运算法与出生时间精度都会写入计算哈希。</Text><PrimaryButton label="打开命盘管理" onPress={onOpenBazi} /></View>{exportError ? <View style={styles.interpretationError}><Text style={styles.interpretationErrorText}>{exportError}</Text></View> : null}{clearError ? <View style={styles.interpretationError}><Text style={styles.interpretationErrorText}>{clearError}</Text></View> : null}{recordCount > 0 && !confirmingClear ? <Pressable onPress={() => setConfirmingClear(true)} style={styles.dangerTextButton}><Text style={styles.dangerTextButtonLabel}>清除全部事实梳理记录</Text></Pressable> : null}{recordCount > 0 && confirmingClear ? <View style={styles.deleteConfirmCard}><Text style={styles.deleteConfirmTitle}>清除全部 {recordCount} 条记录？</Text><Text style={styles.deleteConfirmText}>此操作只删除事实梳理，不会删除命盘；删除后无法恢复。</Text><View style={styles.deleteConfirmActions}><Pressable disabled={clearing} onPress={() => setConfirmingClear(false)} style={styles.deleteCancelButton}><Text style={styles.deleteCancelLabel}>取消</Text></Pressable><Pressable disabled={clearing} onPress={clearRecords} style={[styles.deleteButton, clearing && styles.disabled]}><Text style={styles.deleteButtonLabel}>{clearing ? '正在清除…' : '确认全部清除'}</Text></Pressable></View></View> : null}<PrimaryButton label="完成" onPress={onClose} /></Sheet>;
 }
 
 function TabBar({ view, setView, onClarity, onBazi }: { view: ViewKey; setView: (view: ViewKey) => void; onClarity: () => void; onBazi: () => void }) {
@@ -297,16 +432,66 @@ export default function App() {
   const [view, setView] = useState<ViewKey>('daily');
   const [modal, setModal] = useState<ModalKey>(null);
   const [clarityStep, setClarityStep] = useState(1);
+  const [claritySession, setClaritySession] = useState(0);
+  const [recordSession, setRecordSession] = useState(0);
+  const [profileSession, setProfileSession] = useState(0);
   const [apiOnline, setApiOnline] = useState(false);
   const [chartRevision, setChartRevision] = useState(0);
-  const openClarity = () => { setClarityStep(1); setModal('clarity'); };
+  const [clarityRevision, setClarityRevision] = useState(0);
+  const [selectedRecord, setSelectedRecord] = useState<ClarityRecord | null>(null);
+  const clarityState = useClarityRecords(clarityRevision);
+  const openClarity = () => {
+    setClarityStep(1);
+    setClaritySession(value => value + 1);
+    setModal('clarity');
+  };
+  const openRecord = (record: ClarityRecord) => {
+    setSelectedRecord(record);
+    setRecordSession(value => value + 1);
+    setModal('clarity-record');
+  };
+  const handleRecordSaved = (_record: ClarityRecord) => {
+    setClarityRevision(value => value + 1);
+    setModal(null);
+    setView('journey');
+  };
+  const handleRecordDeleted = async (id: string) => {
+    await deleteClarityRecord(id);
+    setSelectedRecord(null);
+    setClarityRevision(value => value + 1);
+    setModal(null);
+  };
+  const handleClearRecords = async () => {
+    await clearClarityRecords();
+    setSelectedRecord(null);
+    setClarityRevision(value => value + 1);
+    setModal(null);
+  };
+  const handleExportRecords = async () => {
+    const sections = clarityState.records.map((record, index) => {
+      const fields = [
+        `${index + 1}. ${formatClarityDate(record.createdAt, true)}`,
+        `事实：${record.fact}`,
+        `感受：${record.emotion}`,
+        record.interpretation ? `解释：${record.interpretation}` : '',
+        record.worry ? `担心：${record.worry}` : '',
+        record.nextQuestion ? `下一步确认：${record.nextQuestion}` : '',
+      ].filter(Boolean);
+      return fields.join('\n');
+    });
+    await Share.share({
+      title: '知时 · 事实梳理记录',
+      message: `知时 · 事实梳理记录\n导出时间：${new Date().toLocaleString('zh-CN')}\n\n${sections.join('\n\n')}`,
+    });
+  };
   useEffect(() => {
     getApiHealth().then(() => setApiOnline(true)).catch(() => setApiOnline(false));
   }, []);
-  return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={colors.paper} /><View style={styles.app}><Header onSafety={() => setModal('safety')} onProfile={() => setModal('profile')} apiOnline={apiOnline} /><ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} keyboardShouldPersistTaps="always" automaticallyAdjustKeyboardInsets>{view === 'daily' ? <DailyScreen onClarity={openClarity} onBazi={() => setModal('bazi')} revision={chartRevision} /> : view === 'journey' ? <JourneyScreen onClarity={openClarity} /> : <YearScreen onBazi={() => setModal('bazi')} revision={chartRevision} />}</ScrollView><TabBar view={view} setView={setView} onClarity={openClarity} onBazi={() => setModal('bazi')} />
-    <Modal visible={modal === 'clarity'} transparent animationType="slide" onRequestClose={() => setModal(null)}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBackdrop}><ClaritySheet step={clarityStep} setStep={setClarityStep} onClose={() => setModal(null)} /></KeyboardAvoidingView></Modal>
+  return <SafeAreaView style={styles.safeArea}><StatusBar barStyle="dark-content" backgroundColor={colors.paper} /><View style={styles.app}><Header onSafety={() => setModal('safety')} onProfile={() => { setProfileSession(value => value + 1); setModal('profile'); }} apiOnline={apiOnline} /><ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'} keyboardShouldPersistTaps="always" automaticallyAdjustKeyboardInsets>{view === 'daily' ? <DailyScreen onClarity={openClarity} onBazi={() => setModal('bazi')} onOpenRecord={openRecord} latestRecord={clarityState.records[0] ?? null} revision={chartRevision} /> : view === 'journey' ? <JourneyScreen records={clarityState.records} loading={clarityState.loading} error={clarityState.error} onClarity={openClarity} onOpenRecord={openRecord} /> : <YearScreen onBazi={() => setModal('bazi')} revision={chartRevision} />}</ScrollView><TabBar view={view} setView={setView} onClarity={openClarity} onBazi={() => setModal('bazi')} />
+    <Modal visible={modal === 'clarity'} transparent animationType="slide" onRequestClose={() => setModal(null)}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBackdrop}><ClaritySheet key={claritySession} step={clarityStep} setStep={setClarityStep} onClose={() => setModal(null)} onSaved={handleRecordSaved} /></KeyboardAvoidingView></Modal>
+    <Modal visible={modal === 'clarity-record'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}>{selectedRecord ? <ClarityRecordSheet key={`${selectedRecord.id}-${recordSession}`} record={selectedRecord} onClose={() => setModal(null)} onDelete={handleRecordDeleted} /> : null}</View></Modal>
     <Modal visible={modal === 'safety'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><SafetySheet onClose={() => setModal(null)} /></View></Modal>
-    <Modal visible={modal === 'profile'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><ProfileSheet onClose={() => setModal(null)} /></View></Modal>
+    <Modal visible={modal === 'profile'} transparent animationType="slide" onRequestClose={() => setModal(null)}><View style={styles.modalBackdrop}><ProfileSheet key={`profile-${profileSession}-${clarityRevision}`} onClose={() => setModal(null)} onOpenBazi={() => setModal('bazi')} recordCount={clarityState.records.length} onExportRecords={handleExportRecords} onClearRecords={handleClearRecords} /></View></Modal>
     <Modal visible={modal === 'bazi'} transparent animationType="slide" onRequestClose={() => setModal(null)}><KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modalBackdrop}><BaziSheet onClose={() => setModal(null)} onChartStorageChange={() => setChartRevision(value => value + 1)} /></KeyboardAvoidingView></Modal>
   </View></SafeAreaView>;
 }
@@ -330,6 +515,10 @@ const styles = StyleSheet.create({
   todayEmptyCard: { backgroundColor: '#FAF2E8' }, todayEmptyTitle: { color: colors.ink, fontSize: 21, fontWeight: '600', lineHeight: 29, marginTop: 20 }, todayEmptyText: { color: colors.muted, fontSize: 11, lineHeight: 19, marginTop: 10 },
   todayCycleHero: { backgroundColor: '#FAF2E8' }, todayCycleTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, todayVerified: { color: colors.sageDeep, backgroundColor: '#E3ECE0', borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, fontSize: 8, fontWeight: '700' }, todayPillarRow: { flexDirection: 'row', alignItems: 'center', marginTop: 25 }, todayPillarItem: { flex: 1, alignItems: 'center' }, todayPillarLabel: { color: colors.muted, fontSize: 9 }, todayPillarValue: { color: colors.ink, fontSize: 31, fontWeight: '600', letterSpacing: 4, marginTop: 8 }, todayPillarMeta: { color: colors.terracotta, fontSize: 8, marginTop: 5 }, todayPillarDivider: { width: 1, height: 70, backgroundColor: 'rgba(199,122,89,0.18)' }, todayBoundaryBox: { backgroundColor: 'rgba(255,253,248,0.88)', borderRadius: 12, padding: 12, marginTop: 22 }, todayBoundaryLabel: { color: colors.terracotta, fontSize: 9, fontWeight: '600' }, todayBoundaryValue: { color: colors.ink, fontSize: 11, marginTop: 6 },
   todayChartCard: { marginTop: 13, backgroundColor: '#F2F5ED' }, todayChartPillars: { flexDirection: 'row', gap: 7, marginTop: 17 }, todayChartPillar: { flex: 1, alignItems: 'center', backgroundColor: colors.card, borderRadius: 11, paddingVertical: 11 }, todayChartLabel: { color: colors.muted, fontSize: 8 }, todayChartValue: { color: colors.ink, fontSize: 17, fontWeight: '600', marginTop: 7 }, todayEvidence: { color: colors.muted, fontSize: 8, textAlign: 'center', marginTop: 10 }, todayTextButton: { alignSelf: 'center', paddingVertical: 8, paddingHorizontal: 10, marginTop: 6 }, todayTextButtonLabel: { color: colors.sageDeep, fontSize: 9, fontWeight: '600' }, todayClarityCard: { marginTop: 13, backgroundColor: '#E9EEEA' },
+  latestRecordCard: { marginTop: 13, backgroundColor: '#F2F1F5' }, latestRecordDate: { color: colors.muted, fontSize: 9, marginTop: 15 }, latestRecordFact: { color: colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 24, marginTop: 9 }, latestRecordFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 }, latestRecordEmotion: { color: '#6E6280', backgroundColor: '#E7E1EE', borderRadius: 99, paddingHorizontal: 10, paddingVertical: 5, fontSize: 9, fontWeight: '600' }, latestRecordLink: { color: colors.sageDeep, fontSize: 10, fontWeight: '600' },
   journeyEmptyCard: { backgroundColor: '#F2F1F5' }, journeyEmptyTitle: { color: colors.ink, fontSize: 21, fontWeight: '600', lineHeight: 29, marginTop: 20 }, journeyEmptyText: { color: colors.muted, fontSize: 11, lineHeight: 19, marginTop: 10 }, journeyPrinciples: { gap: 10, marginTop: 14 }, journeyPrinciple: { borderWidth: 1, borderColor: colors.line, borderRadius: 14, backgroundColor: colors.card, padding: 15 }, journeyPrincipleNumber: { color: colors.lilac, fontSize: 9 }, journeyPrincipleTitle: { color: colors.ink, fontSize: 14, fontWeight: '600', marginTop: 8 }, journeyPrincipleText: { color: colors.muted, fontSize: 10, lineHeight: 16, marginTop: 5 },
+  journeySummaryCard: { backgroundColor: '#F2F5ED' }, journeySummaryTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }, journeySummaryTitle: { color: colors.ink, fontSize: 19, fontWeight: '600', lineHeight: 27, marginTop: 15 }, journeySummaryNumber: { color: colors.sageDeep, fontSize: 38, fontWeight: '600', lineHeight: 42 }, journeySummaryText: { color: colors.muted, fontSize: 11, lineHeight: 18, marginTop: 11 }, journeyRecordList: { gap: 12, marginTop: 14 }, journeyRecordCard: { borderWidth: 1, borderColor: colors.line, borderRadius: 17, backgroundColor: colors.card, padding: 17 }, journeyRecordMeta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, journeyRecordDate: { color: colors.muted, fontSize: 9 }, journeyRecordEmotion: { color: '#6E6280', backgroundColor: '#EEEAF2', borderRadius: 99, paddingHorizontal: 9, paddingVertical: 5, fontSize: 9, fontWeight: '600' }, journeyRecordFact: { color: colors.ink, fontSize: 16, fontWeight: '600', lineHeight: 23, marginTop: 12 }, journeyRecordQuestion: { color: '#6A725F', backgroundColor: '#EEF1E9', borderRadius: 10, padding: 10, fontSize: 10, lineHeight: 16, marginTop: 11 }, journeyRecordOpen: { color: colors.sageDeep, fontSize: 9, fontWeight: '600', marginTop: 13 },
+  recordDetailTitle: { color: colors.ink, fontSize: 23, fontWeight: '600', lineHeight: 31, marginTop: 13 }, recordDetailList: { gap: 10 }, recordDetailItem: { borderRadius: 13, backgroundColor: '#F0F0E9', padding: 14, borderLeftWidth: 3, borderLeftColor: '#CBD4C5' }, recordDetailLabel: { color: '#7C8279', fontSize: 9, fontWeight: '600' }, recordDetailValue: { color: colors.ink, fontSize: 12, lineHeight: 20, marginTop: 7 }, localOnlyNotice: { borderRadius: 13, backgroundColor: '#E8EEE4', padding: 14, marginTop: 16 }, localOnlyTitle: { color: colors.sageDeep, fontSize: 10, fontWeight: '700' }, localOnlyText: { color: '#6F786B', fontSize: 10, lineHeight: 17, marginTop: 6 },
+  settingsDataCard: { borderWidth: 1, borderColor: colors.line, borderRadius: 15, backgroundColor: colors.card, padding: 15, marginTop: 12 }, settingsDataLabel: { color: colors.muted, fontSize: 9, fontWeight: '600' }, settingsDataValue: { color: colors.ink, fontSize: 20, fontWeight: '600', marginTop: 9 }, settingsDataText: { color: colors.muted, fontSize: 10, lineHeight: 17, marginTop: 7 }, dangerTextButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 14 }, dangerTextButtonLabel: { color: '#A34F3B', fontSize: 11, fontWeight: '600' }, deleteConfirmCard: { borderWidth: 1, borderColor: 'rgba(163,79,59,0.24)', borderRadius: 14, backgroundColor: '#FAECE7', padding: 14, marginTop: 14 }, deleteConfirmTitle: { color: '#8F4534', fontSize: 14, fontWeight: '700' }, deleteConfirmText: { color: '#8C645A', fontSize: 10, lineHeight: 16, marginTop: 6 }, deleteConfirmActions: { flexDirection: 'row', gap: 9, marginTop: 13 }, deleteCancelButton: { flex: 1, minHeight: 42, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(43,48,43,0.16)', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.card }, deleteCancelLabel: { color: colors.ink, fontSize: 10, fontWeight: '600' }, deleteButton: { flex: 1, minHeight: 42, borderRadius: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: '#9A4D3A' }, deleteButtonLabel: { color: '#FFF', fontSize: 10, fontWeight: '700' },
   clarityFieldLabel: { color: '#737970', fontSize: 10, marginTop: 14, marginBottom: 7 }, clarityInput: { minHeight: 70, borderWidth: 1, borderColor: 'rgba(43,48,43,0.18)', borderRadius: 11, padding: 12, color: colors.ink, fontSize: 11, lineHeight: 17, textAlignVertical: 'top', backgroundColor: '#FFFDF8' },
 });
