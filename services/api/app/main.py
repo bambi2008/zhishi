@@ -37,7 +37,7 @@ from .models import (
 )
 from .store import store
 
-app = FastAPI(title="知时 API", version="0.1.0", description="东方人生导航 MVP 的结构化 API 骨架。")
+app = FastAPI(title="知时 API", version="0.2.0", description="东方人生导航 MVP 的结构化 API 骨架。")
 
 
 def configured_cors_origins() -> list[str]:

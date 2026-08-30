@@ -1,6 +1,6 @@
 [project]
 name = "zhishi-api"
-version = "0.1.0"
+version = "0.2.0"
 description = "知时东方人生导航 API 骨架"
 requires-python = ">=3.11"
 dependencies = [
