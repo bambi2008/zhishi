@@ -22,6 +22,7 @@ from .interpretations import (
     InterpretationServiceError,
     generate_bazi_interpretation,
 )
+from .reflections import ReflectionTurnInput, ReflectionTurnResult, generate_reflection_turn
 from .models import (
     AnxietySession,
     AnxietySessionInput,
@@ -122,6 +123,17 @@ def create_bazi_interpretation(payload: BaziInterpretationInput) -> BaziInterpre
             status_code=422,
             detail={"code": exc.code, "message": str(exc)},
         ) from exc
+    except InterpretationServiceError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
+
+
+@app.post("/api/v1/reflections/conversation/turn", response_model=ReflectionTurnResult)
+def create_reflection_turn(payload: ReflectionTurnInput) -> ReflectionTurnResult:
+    try:
+        return generate_reflection_turn(payload)
     except InterpretationServiceError as exc:
         raise HTTPException(
             status_code=exc.status_code,

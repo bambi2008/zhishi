@@ -1,6 +1,6 @@
 # Zhishi Terms of Use (Pre-Launch Draft)
 
-Last updated: August 15, 2026
+Last updated: August 30, 2026
 
 > This draft is not ready for production acceptance. Replace every bracketed field and obtain review from qualified counsel in the launch markets before release.
 
@@ -12,7 +12,7 @@ The Service is intended only for people aged 18 or older. By using the Service, 
 
 ## 2. What Zhishi Provides
 
-Zhishi provides deterministic traditional-calendar calculations, cultural interpretation, journaling, and self-reflection tools. An optional feature uses DeepSeek to generate explanatory text from a minimised set of audited chart facts and optional user text. AI-generated output is identified in the product and is not part of the deterministic chart calculation.
+Zhishi provides deterministic traditional-calendar calculations, cultural interpretation, journaling, and self-reflection tools. Optional DeepSeek features can generate explanatory text from a minimised set of audited chart facts and optional user text, or conduct a reality-reflection dialogue from the current entry and messages the user expressly submits in that dialogue. The reality-reflection feature does not attach the user's chart or birth data. AI-generated output is identified in the product and is not part of the deterministic chart calculation.
 
 The Service is for cultural, informational, and entertainment purposes. It does not provide medical, mental-health, legal, financial, employment, immigration, or other professional advice. It must not be used as the sole basis for a high-impact or irreversible decision.
 
@@ -40,13 +40,13 @@ You agree to:
 
 ## 6. Automated and AI-Assisted Features
 
-The core birth-chart engine applies documented calendar and boundary rules and is designed to be reproducible for the same inputs, rules, and engine version. DeepSeek may generate a cultural explanation only after the user requests it. Model output can be incomplete, inaccurate, non-unique, or unavailable, and users must not treat it as a calculation result or verified fact. Zhishi does not use a birth chart or an AI explanation to make a decision that produces legal or similarly significant effects about a user.
+The core birth-chart engine applies documented calendar and boundary rules and is designed to be reproducible for the same inputs, rules, and engine version. DeepSeek may generate a cultural explanation or reality-reflection response only after the user requests the relevant feature and acknowledges its separate notice. Model output can be incomplete, inaccurate, non-unique, or unavailable. A reflection response may offer hypotheses, options, trade-offs, and small next steps, but it cannot verify another person's motives or decide a major matter for the user. Users must not treat model output as a calculation result or verified fact. Zhishi does not use a birth chart or AI output to make a decision that produces legal or similarly significant effects about a user.
 
-Users must not submit another person's personal data, medical records, account credentials, or other sensitive information in the optional AI question. Use of the AI feature is also subject to the availability and applicable use restrictions of the model provider.
+Users must not submit another person's personal data, names, contact details, medical records, account credentials, or other sensitive information in an optional AI question or reality-reflection dialogue. Use of an AI feature is also subject to the availability and applicable use restrictions of the model provider.
 
 ## 7. Accounts, Local Storage, and Availability
 
-The current MVP does not require an account. A chart is saved on the device only when the user selects “Save.” A daily-state record is saved only when the user confirms “Save today's state,” and a fact-clarification record is saved only when the user confirms “Save this reflection.” Users can edit or delete individual daily-state and reflection records, clear each record category from Settings, export a text copy through the device share sheet, and manage the saved chart separately. These records are not automatically synced to Zhishi or sent to DeepSeek. Future account or cloud-sync features will be covered by an updated Privacy Notice before launch.
+The current MVP does not require an account. A chart is saved on the device only when the user selects “Save.” A daily-state record is saved only when the user confirms “Save today's state,” and a fact-clarification record is saved only when the user confirms a local save. AI reflection dialogues and outputs are not saved automatically. If the user expressly selects “Save original record and latest AI reflection,” only the original entry and latest structured synthesis are saved on the device; the full dialogue transcript is not saved. Users can edit or delete individual daily-state and reflection records, clear each record category from Settings, export a text copy through the device share sheet, and manage the saved chart separately. These records are not automatically synced to Zhishi or sent to DeepSeek. Future account or cloud-sync features will be covered by an updated Privacy Notice before launch.
 
 We may maintain, change, suspend, or discontinue features. We will provide notice where required by applicable law. Availability can be affected by time-zone databases, location providers, app stores, hosting providers, and other third-party services.
 

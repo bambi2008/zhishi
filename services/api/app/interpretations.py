@@ -233,6 +233,16 @@ _CRITICAL_INPUT_PATTERNS = tuple(
 )
 
 
+def has_forbidden_ai_output(text: str) -> bool:
+    """Return True when generated text contains a blocked deterministic or high-risk claim."""
+    return any(pattern.search(text) for pattern in _FORBIDDEN_OUTPUT_PATTERNS)
+
+
+def has_critical_safety_signal(text: str) -> bool:
+    """Fail closed before an AI request when user text contains an immediate safety signal."""
+    return any(pattern.search(text) for pattern in _CRITICAL_INPUT_PATTERNS)
+
+
 def _pillar_fact(label: str, pillar: Any) -> str:
     hidden = "、".join(pillar.hidden_stems)
     hidden_gods = "、".join(pillar.hidden_stem_ten_gods)
@@ -405,7 +415,7 @@ def _validate_draft(
     if unknown_ids:
         raise ValueError(f"provider cited unknown evidence ids: {sorted(unknown_ids)}")
     generated_text = _all_generated_text(draft)
-    if any(pattern.search(generated_text) for pattern in _FORBIDDEN_OUTPUT_PATTERNS):
+    if has_forbidden_ai_output(generated_text):
         raise ValueError("provider output failed high-risk language validation")
     return draft
 
@@ -424,7 +434,7 @@ def generate_bazi_interpretation(
     payload: BaziInterpretationInput,
     provider: InterpretationProvider | None = None,
 ) -> BaziInterpretationResult:
-    if payload.question and any(pattern.search(payload.question) for pattern in _CRITICAL_INPUT_PATTERNS):
+    if payload.question and has_critical_safety_signal(payload.question):
         raise InterpretationServiceError(
             "interpretation_safety_stop",
             (

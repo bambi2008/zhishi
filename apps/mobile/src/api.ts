@@ -237,6 +237,57 @@ export type BaziInterpretationResult = {
   };
 };
 
+export type ReflectionConversationMessage = {
+  role: 'assistant' | 'user';
+  content: string;
+};
+
+export type ReflectionOption = {
+  title: string;
+  when_it_fits: string;
+  tradeoff: string;
+};
+
+export type ReflectionEvidence = {
+  id: string;
+  label: string;
+  value: string;
+};
+
+export type ReflectionTurnResult = {
+  status: 'ok';
+  phase: 'clarify' | 'synthesis';
+  generated_at: string;
+  model: string;
+  headline: string;
+  what_i_heard: string;
+  hypothesis: string;
+  evidence_ids: string[];
+  clarification_question?: string | null;
+  options: ReflectionOption[];
+  next_step?: string | null;
+  verification_question?: string | null;
+  cautions: string[];
+  disclosure: string;
+  professional_advice_notice: string;
+  evidence_catalog: ReflectionEvidence[];
+  usage: {
+    prompt_tokens?: number | null;
+    completion_tokens?: number | null;
+    total_tokens?: number | null;
+  };
+};
+
+export type ReflectionTurnRequest = {
+  fact: string;
+  emotion: string;
+  interpretation: string;
+  worry: string;
+  nextQuestion: string;
+  conversation: ReflectionConversationMessage[];
+  responseMode?: 'auto' | 'synthesize';
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -306,6 +357,23 @@ export function generateBaziInterpretation(
       language: 'zh-CN',
       focus_areas: focusAreas,
       question: question.trim() || null,
+      acknowledged_ai_processing: true,
+    }),
+  });
+}
+
+export function generateReflectionTurn(payload: ReflectionTurnRequest): Promise<ReflectionTurnResult> {
+  return request<ReflectionTurnResult>('/api/v1/reflections/conversation/turn', {
+    method: 'POST',
+    body: JSON.stringify({
+      fact: payload.fact,
+      emotion: payload.emotion,
+      interpretation: payload.interpretation,
+      worry: payload.worry,
+      next_question: payload.nextQuestion,
+      conversation: payload.conversation,
+      response_mode: payload.responseMode ?? 'auto',
+      language: 'zh-CN',
       acknowledged_ai_processing: true,
     }),
   });

@@ -12,12 +12,49 @@ export type ClarityRecord = {
   interpretation: string;
   worry: string;
   nextQuestion: string;
+  aiReflection?: SavedAiReflection;
+};
+
+export type SavedAiReflection = {
+  generatedAt: string;
+  model: string;
+  headline: string;
+  whatIHeard: string;
+  hypothesis: string;
+  options: Array<{
+    title: string;
+    whenItFits: string;
+    tradeoff: string;
+  }>;
+  nextStep: string;
+  verificationQuestion: string;
+  cautions: string[];
 };
 
 export type ClarityRecordDraft = Pick<
   ClarityRecord,
   'fact' | 'emotion' | 'interpretation' | 'worry' | 'nextQuestion'
->;
+> & { aiReflection?: SavedAiReflection };
+
+function isSavedAiReflection(value: unknown): value is SavedAiReflection {
+  if (!value || typeof value !== 'object') return false;
+  const reflection = value as Partial<SavedAiReflection>;
+  return typeof reflection.generatedAt === 'string'
+    && typeof reflection.model === 'string'
+    && typeof reflection.headline === 'string'
+    && typeof reflection.whatIHeard === 'string'
+    && typeof reflection.hypothesis === 'string'
+    && Array.isArray(reflection.options)
+    && reflection.options.every(option => Boolean(option)
+      && typeof option === 'object'
+      && typeof option.title === 'string'
+      && typeof option.whenItFits === 'string'
+      && typeof option.tradeoff === 'string')
+    && typeof reflection.nextStep === 'string'
+    && typeof reflection.verificationQuestion === 'string'
+    && Array.isArray(reflection.cautions)
+    && reflection.cautions.every(item => typeof item === 'string');
+}
 
 function isClarityRecord(value: unknown): value is ClarityRecord {
   if (!value || typeof value !== 'object') return false;
@@ -30,7 +67,8 @@ function isClarityRecord(value: unknown): value is ClarityRecord {
     && typeof record.emotion === 'string'
     && typeof record.interpretation === 'string'
     && typeof record.worry === 'string'
-    && typeof record.nextQuestion === 'string';
+    && typeof record.nextQuestion === 'string'
+    && (record.aiReflection === undefined || isSavedAiReflection(record.aiReflection));
 }
 
 function normalizeDraft(draft: ClarityRecordDraft): ClarityRecordDraft {
@@ -40,6 +78,7 @@ function normalizeDraft(draft: ClarityRecordDraft): ClarityRecordDraft {
     interpretation: draft.interpretation.trim(),
     worry: draft.worry.trim(),
     nextQuestion: draft.nextQuestion.trim(),
+    aiReflection: draft.aiReflection,
   };
 }
 

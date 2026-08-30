@@ -80,6 +80,14 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 - `DEEPSEEK_MODEL`：默认 `deepseek-v4-flash`，可受控切换。
 - `DEEPSEEK_TIMEOUT_SECONDS`：默认 30，限制为 5—60 秒。
 
+## DeepSeek 现实反思对话
+
+`POST /api/v1/reflections/conversation/turn` 是无服务端会话状态的多轮现实对话接口。客户端每轮提交当前事实、感受、解释、担心、最想确认的问题、最多四组既有问答，以及 `acknowledged_ai_processing: true`。接口不会读取命盘，也不会把现实内容和命盘文化解释自动混合。
+
+默认首轮固定返回 `clarify`：模型必须先复述它听到的核心张力、明确标记一个暂时假设，并只追问一个会改变后续排序的关键问题。收到一次用户补充后，后续轮次固定返回 `synthesis`：必须包含 2–3 条不同路径、每条路径的适用条件和代价、一个小步骤及一个现实核对问题。用户也可显式请求 `response_mode: synthesize` 获取初步整理。
+
+所有输出都必须引用服务端生成的 `entry.*` 或 `dialogue.user_*` 证据 ID；综合结果必须引用最新一次用户补充。未知证据、遗漏最新回复、非条件式假设、危险确定性语言、强迫性的重大决定指令和无效 JSON 会重试一次，仍不合格则返回 `503 reflection_output_rejected`。检测到自伤或他伤信号时，会在模型调用前返回 `422 reflection_safety_stop`。接口响应不缓存，生产环境不得记录请求正文。
+
 旧的 `POST /api/v1/year-navigation/{year}` 静态解释骨架仍返回 `501 year_navigation_requires_chart_context`，防止旧客户端把静态季度或领域判断冒充为新个性化结果。
 
 `POST /api/v1/daily/guidance/generate` 与 `GET /api/v1/daily/guidance/today` 同样会返回 `501 daily_guidance_requires_real_context`。只有用户真实记录、审计命盘和生成规则完成绑定后，今日建议功能才会重新开放。
