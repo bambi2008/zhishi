@@ -20,8 +20,7 @@ Depending on the feature used, we may process:
 
 - **Birth and calculation data:** birth date, entered birth time, time-accuracy selection, birth place, latitude, longitude, time zone, traditional luck-direction input, calculation rules, and generated chart results.
 - **Reflection data:** journal entries, mood or pressure selections, life-chapter notes, and other content a user chooses to enter.
-- **AI interpretation data:** the selected interpretation focus, an optional question, and a minimised package of chart-derived facts such as Four Pillars labels, ten-god labels, current luck/annual/monthly cycles, boundary dates, and time-accuracy information.
-- **AI reflection-dialogue data:** only when the user expressly starts that feature, the current fact-clarification entry (fact, emotion, the user's interpretation, worry, and question), the user's replies in that dialogue, and the generated responses needed to continue the current dialogue. This flow does not include the user's birth data or chart.
+- **AI guidance-dialogue data:** only when the user sends a message after seeing the in-context notice, the messages and generated responses needed to continue that dialogue; the current daily-state record if one exists; and, if a chart is saved, a minimised package of server-recalculated and audited chart facts such as Four Pillars labels, ten-god labels, current luck/annual/monthly cycles, boundary dates, and time-accuracy information. The package does not include the original birth date, birth-place name, latitude, or longitude.
 - **Technical and security data:** IP address, request time, app and device version, crash information, security events, and diagnostic logs where enabled.
 - **Support data:** messages and contact details a user sends to customer support.
 - **Account and transaction data:** only if account or paid features are introduced, and only after this Notice is updated.
@@ -35,13 +34,11 @@ We receive birth, reflection, and support data directly from the user. A place-s
 - A chart is saved locally on the device only after the user selects “Save,” and remains until the user clears it or removes the application and device storage.
 - A daily-state record containing the user's selected energy, stress, emotion, focus area, and optional text is saved locally only after the user selects “Save today's state.” One record is kept per local calendar date and can be updated or deleted by the user.
 - A fact-clarification record is saved locally only after the user selects “Save this reflection.” Saved records can be reviewed and deleted individually, or cleared together from Settings.
-- Saved daily-state and fact-clarification records are not automatically sent to the Zhishi API or DeepSeek.
+- Saved daily-state and legacy fact-clarification records are not automatically sent to the Zhishi API or DeepSeek. The current daily-state record is attached only when the user sends a new guidance message after seeing the data notice.
 - The current MVP has no advertising SDK, behavioural advertising, account sync, or data-broker integration.
 - Zhishi does not sell personal data or share it for cross-context behavioural advertising in the current MVP.
-- An AI interpretation is generated only after the user selects the feature and acknowledges the just-in-time notice. Zhishi sends DeepSeek the minimised AI interpretation data described above, not the submitted birth date, birth-place name, latitude, or longitude.
-- Zhishi does not intentionally retain the AI request or generated interpretation after returning it. The current mobile app keeps the generated text only in the open page and does not save it automatically.
-- An AI reflection dialogue starts only after a separate just-in-time notice and affirmative action. Zhishi sends DeepSeek only the current fact-clarification entry and the messages in that dialogue; it does not attach the chart, birth data, daily-state history, or other saved records.
-- Zhishi does not intentionally retain the reflection-dialogue request, transcript, or response after returning it. The mobile app does not save the full transcript. If the user expressly selects “Save original record and latest AI reflection,” the app stores the original entry and only the latest structured synthesis on that device.
+- The AI guidance dialogue is generated only after the input area continuously displays what will be sent and the user affirmatively selects Send. Zhishi sends DeepSeek the current dialogue messages, the current daily-state record if present, and the minimised audited chart package if a chart is present. It does not send the original birth date, birth-place name, latitude, longitude, historical daily-state records, legacy fact-clarification records, or other device content.
+- Zhishi does not intentionally retain a guidance request, transcript, or generated response after returning it. The current mobile app keeps the dialogue only in the open page and clears it when that page is closed. Legacy fact-clarification records and any structured synthesis previously saved by an express user action continue to be stored only on that device.
 
 Production infrastructure and diagnostic logging must be re-audited before this section is published.
 
@@ -54,8 +51,7 @@ For users in the EU, EEA, and UK, the anticipated legal bases are:
 | Generate the requested chart and current cycles | Birth and calculation data | Performance of the user-requested service / contract |
 | Save or clear a chart on the user’s device | Birth data and chart result | User request and performance of the service |
 | Provide journaling or reflection features | Content deliberately entered by the user | Performance of the service; explicit consent if special-category data is intentionally requested |
-| Generate an AI-assisted cultural interpretation requested by the user | Minimised chart-derived facts, selected focus, and optional question | Performance of the user-requested service / contract; additional explicit consent if special-category data is intentionally requested |
-| Conduct an AI-assisted reality-reflection dialogue requested by the user | The current reflection entry, dialogue replies, and generated responses | Performance of the user-requested service / contract; additional explicit consent if special-category data is intentionally submitted or requested |
+| Conduct an AI-assisted guidance dialogue requested by the user | Current dialogue messages, optional current daily-state record, generated responses, and optional minimised audited chart facts | Performance of the user-requested service / contract; additional explicit consent if special-category data is intentionally submitted or requested |
 | Protect the Service, prevent abuse, and diagnose faults | Limited technical and security data | Legitimate interests in security and reliability, balanced against user rights |
 | Meet legal obligations and respond to lawful requests | Relevant records | Legal obligation |
 | Optional analytics or marketing | Data described at the consent prompt | Consent where required; disabled in the current MVP |
@@ -74,7 +70,7 @@ We may disclose data only as needed to:
 
 - hosting, security, customer-support, and infrastructure providers acting under contract;
 - a disclosed geocoding provider when the user performs a place search;
-- **Hangzhou DeepSeek Artificial Intelligence Co., Ltd. (DeepSeek):** generation of an expressly requested AI cultural interpretation from minimised chart-derived facts and optional user text, or an expressly requested reality-reflection dialogue from the current reflection entry and dialogue messages;
+- **Hangzhou DeepSeek Artificial Intelligence Co., Ltd. (DeepSeek):** generation of an expressly requested guidance dialogue from current dialogue messages, an optional current daily-state record, and optional minimised audited chart facts;
 - payment processors if paid features are introduced;
 - professional advisers, acquirers, or successors subject to appropriate confidentiality and legal safeguards; or
 - public authorities where disclosure is legally required and proportionate.
@@ -84,7 +80,7 @@ A production subprocessor list, including provider names, processing locations, 
 ## 8. Retention
 
 - **One-time chart requests:** calculation payloads and results are not intentionally retained by the current API after the response. Production request-body logging must remain disabled.
-- **AI interpretation and reflection-dialogue requests:** Zhishi does not intentionally persist the minimised request, dialogue transcript, or generated text on the API. DeepSeek may retain and process API inputs and outputs under its own terms and privacy materials; those materials do not state a fixed API-input deletion period. Users should not include names, contact details, credentials, medical records, or other sensitive information in an optional question or reality-reflection dialogue.
+- **AI guidance-dialogue requests:** Zhishi does not intentionally persist the minimised request, dialogue transcript, or generated text on the API. DeepSeek may retain and process API inputs and outputs under its own terms and privacy materials; those materials do not state a fixed API-input deletion period. Users should not include names, contact details, credentials, medical records, complete financial-account information, or other sensitive information in a guidance dialogue.
 - **On-device saved charts:** retained until the user clears the saved chart or removes the relevant application storage.
 - **On-device daily-state records:** retained until the user deletes an individual date, clears all daily-state records in Settings, or removes the relevant application storage.
 - **On-device fact-clarification records and any expressly saved latest AI synthesis:** retained until the user deletes an individual record, clears all such records in Settings, edits the original record in a way that removes the previous synthesis, or removes the relevant application storage. Full AI dialogue transcripts are not saved by the current app.
@@ -95,7 +91,7 @@ We will delete or anonymise personal data when it is no longer needed for the st
 
 ## 9. International Transfers
 
-Render hosts the current Zhishi API in Frankfurt. DeepSeek states that it directly collects, processes, and stores personal data in the People's Republic of China. Before offering the AI interpretation feature publicly to EU, EEA, or UK users, Zhishi must complete an appropriate transfer mechanism, such as Standard Contractual Clauses or the applicable UK transfer mechanism, a transfer-impact assessment, the required processor terms, and supplementary safeguards where necessary. The production Notice will identify the final transfer locations and how to request a copy of applicable safeguards.
+Render hosts the current Zhishi API in Frankfurt. DeepSeek states that it directly collects, processes, and stores personal data in the People's Republic of China. Before offering the AI guidance feature publicly to EU, EEA, or UK users, Zhishi must complete an appropriate transfer mechanism, such as Standard Contractual Clauses or the applicable UK transfer mechanism, a transfer-impact assessment, the required processor terms, and supplementary safeguards where necessary. The production Notice will identify the final transfer locations and how to request a copy of applicable safeguards.
 
 ## 10. Your Privacy Rights
 
@@ -129,7 +125,7 @@ If sale, sharing, targeted advertising, financial incentives, or a use of sensit
 
 The chart engine uses deterministic rules to calculate traditional calendar outputs. These outputs do not make legal or similarly significant decisions about a user.
 
-DeepSeek generates the optional cultural interpretation and optional reality-reflection dialogue. The product labels that content as AI-generated and identifies the user or chart evidence cited by each response. The reality-reflection dialogue keeps facts, user interpretations, model hypotheses, options, and trade-offs visibly separate and does not attach the chart. Users are not told that a deterministic calculation is AI-generated, and AI-written output is not presented as a deterministic engine fact. These features do not make legal or similarly significant decisions about a user.
+DeepSeek generates the optional guidance dialogue. The product labels that content as AI-generated and identifies the reality or audited chart evidence cited by each response. Each response gives a conditional answer, an observable next step, concrete examples, risk boundaries, and one follow-up question; these presentation controls do not make the response verified or professional advice. Users are not told that a deterministic calculation is AI-generated, and AI-written output is not presented as a deterministic engine fact. This feature does not make legal or similarly significant decisions about a user.
 
 ## 13. Children
 

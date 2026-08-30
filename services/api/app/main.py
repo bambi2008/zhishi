@@ -22,6 +22,7 @@ from .interpretations import (
     InterpretationServiceError,
     generate_bazi_interpretation,
 )
+from .guidance import GuidanceTurnInput, GuidanceTurnResult, generate_guidance_turn
 from .reflections import ReflectionTurnInput, ReflectionTurnResult, generate_reflection_turn
 from .models import (
     AnxietySession,
@@ -37,7 +38,7 @@ from .models import (
 )
 from .store import store
 
-app = FastAPI(title="知时 API", version="0.2.0", description="东方人生导航 MVP 的结构化 API 骨架。")
+app = FastAPI(title="知时 API", version="0.3.0", description="东方人生导航 MVP 的结构化 API 骨架。")
 
 
 def configured_cors_origins() -> list[str]:
@@ -134,6 +135,22 @@ def create_bazi_interpretation(payload: BaziInterpretationInput) -> BaziInterpre
 def create_reflection_turn(payload: ReflectionTurnInput) -> ReflectionTurnResult:
     try:
         return generate_reflection_turn(payload)
+    except InterpretationServiceError as exc:
+        raise HTTPException(
+            status_code=exc.status_code,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
+
+
+@app.post("/api/v1/guidance/conversation/turn", response_model=GuidanceTurnResult)
+def create_guidance_turn(payload: GuidanceTurnInput) -> GuidanceTurnResult:
+    try:
+        return generate_guidance_turn(payload)
+    except TimeNormalizationError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail={"code": exc.code, "message": str(exc)},
+        ) from exc
     except InterpretationServiceError as exc:
         raise HTTPException(
             status_code=exc.status_code,

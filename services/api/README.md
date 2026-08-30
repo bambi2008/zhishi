@@ -65,7 +65,23 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 
 `as_of_utc` 必须带 UTC 偏移，避免服务器时区造成隐式变化。接口一次返回稳定命盘、当前所在大运、下一步大运及交接时刻、当前流年与前后两个精确立春边界，以及当前流月与前后两个精确“节”边界。当前状态不写入命盘计算哈希；同一输入和同一 `as_of_utc` 可复现同一结果。流年核对主引擎年柱、1984 甲子基准公式及 `sxtwl` 立春时刻；流月核对主引擎月柱、五虎遁公式及 `sxtwl` 节气时刻。任一审计失败时停止展示当前周期。
 
-## DeepSeek 个性化文化解读
+## DeepSeek 回答优先指导对话
+
+`POST /api/v1/guidance/conversation/turn` 是“今天”和“今年”共用的无服务端会话状态接口。客户端每轮提交：
+
+- `scope: today | year`；
+- 可选完整排盘输入，服务端必须重新计算并审计，客户端不能伪造命盘事实；
+- 可选的今天状态；
+- 从用户消息开始、严格交替并以最新用户消息结束的对话；
+- 带 UTC 偏移的 `as_of_utc` 和 `acknowledged_ai_processing: true`。
+
+每轮输出固定包含一个直接答案、一个带 `when` 与 `done_when` 的小步骤、2—3 个具体场景例子、1—3 条风险提醒、引用证据以及且仅一个追问。模型必须在询问更多信息前先给有用的暂定答案；收到补充后必须引用最新 `dialogue.user_*` 证据并重写完整建议，而不是追加旧答案。有命盘时还必须引用至少一条服务端生成的 `chart.*`、`cycle.*` 或 `calculation.*` 审计证据；没有命盘时禁止谈命盘、运势、五行或时机。
+
+`today` 把建议限定为未来 24—72 小时的可逆动作；`year` 只把年度文化线索翻译成未来 30—90 天的计划、检查点和决策条件，不预测年度事件。事业和关系输出不得推断他人动机或发出强迫性重大决定指令。投资相关输出只允许决策流程保护，不得给出具体资产、买卖、加减仓、做多做空、杠杆、借款、收益保证或时点指令。
+
+服务端把命盘计算证据与用户现实证据分开标记。未知证据、遗漏最新回复、缺少命盘证据、多问、结构不完整、危险确定性断言或金融交易指令会重试一次，仍不合格则返回 `503 guidance_output_rejected`。命盘/周期审计失败返回 `409 guidance_context_not_audited`；检测到自伤或他伤信号时，在计算和模型调用前返回 `422 guidance_safety_stop`。响应不缓存，知时 API 不保存对话正文。
+
+## DeepSeek 个性化文化解读（旧客户端兼容）
 
 `POST /api/v1/bazi/interpretations/generate` 会由服务端重新计算命盘与当前上下文，只有四柱、大运、流年和流月全部通过审计时才调用 DeepSeek。客户端不能提交一份自称“已计算”的事实来绕过核心引擎。
 
@@ -80,7 +96,7 @@ Windows 之外请将 `.venv/Scripts/python` 替换为 `.venv/bin/python`。
 - `DEEPSEEK_MODEL`：默认 `deepseek-v4-flash`，可受控切换。
 - `DEEPSEEK_TIMEOUT_SECONDS`：默认 30，限制为 5—60 秒。
 
-## DeepSeek 现实反思对话
+## DeepSeek 现实反思对话（旧记录编辑兼容）
 
 `POST /api/v1/reflections/conversation/turn` 是无服务端会话状态的多轮现实对话接口。客户端每轮提交当前事实、感受、解释、担心、最想确认的问题、最多四组既有问答，以及 `acknowledged_ai_processing: true`。接口不会读取命盘，也不会把现实内容和命盘文化解释自动混合。
 

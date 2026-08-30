@@ -288,6 +288,73 @@ export type ReflectionTurnRequest = {
   responseMode?: 'auto' | 'synthesize';
 };
 
+export type GuidanceScope = 'today' | 'year';
+
+export type GuidanceConversationMessage = {
+  role: 'user' | 'assistant';
+  content: string;
+};
+
+export type GuidanceDailyState = {
+  localDate: string;
+  energy: number;
+  stress: number;
+  emotion: string;
+  focusArea: string;
+  importantEvent?: string;
+  note?: string;
+};
+
+export type GuidanceEvidence = {
+  id: string;
+  source: 'calculation' | 'reality';
+  label: string;
+  value: string;
+};
+
+export type GuidanceTurnResult = {
+  status: 'ok';
+  scope: GuidanceScope;
+  context_mode: 'reality_only' | 'audited_chart_and_reality';
+  generated_at: string;
+  as_of_utc: string;
+  calculation_hash?: string | null;
+  model: string;
+  headline: string;
+  direct_answer: string;
+  next_step: {
+    action: string;
+    when: string;
+    done_when: string;
+  };
+  examples: Array<{
+    title: string;
+    situation: string;
+    try_this: string;
+    watch_for: string;
+  }>;
+  watchouts: string[];
+  evidence_ids: string[];
+  follow_up_question: string;
+  disclosure: string;
+  uncertainty_notice: string;
+  professional_advice_notice: string;
+  evidence_catalog: GuidanceEvidence[];
+  usage: {
+    prompt_tokens?: number | null;
+    completion_tokens?: number | null;
+    total_tokens?: number | null;
+  };
+};
+
+export type GuidanceTurnRequest = {
+  scope: GuidanceScope;
+  chart?: BaziCalculationInput | null;
+  dailyState?: GuidanceDailyState | null;
+  conversation: GuidanceConversationMessage[];
+  asOfUtc?: string;
+};
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
@@ -373,6 +440,29 @@ export function generateReflectionTurn(payload: ReflectionTurnRequest): Promise<
       next_question: payload.nextQuestion,
       conversation: payload.conversation,
       response_mode: payload.responseMode ?? 'auto',
+      language: 'zh-CN',
+      acknowledged_ai_processing: true,
+    }),
+  });
+}
+
+export function generateGuidanceTurn(payload: GuidanceTurnRequest): Promise<GuidanceTurnResult> {
+  return request<GuidanceTurnResult>('/api/v1/guidance/conversation/turn', {
+    method: 'POST',
+    body: JSON.stringify({
+      scope: payload.scope,
+      chart: payload.chart ?? null,
+      as_of_utc: payload.asOfUtc ?? new Date().toISOString(),
+      daily_state: payload.dailyState ? {
+        local_date: payload.dailyState.localDate,
+        energy: payload.dailyState.energy,
+        stress: payload.dailyState.stress,
+        emotion: payload.dailyState.emotion,
+        focus_area: payload.dailyState.focusArea,
+        important_event: payload.dailyState.importantEvent ?? '',
+        note: payload.dailyState.note ?? '',
+      } : null,
+      conversation: payload.conversation,
       language: 'zh-CN',
       acknowledged_ai_processing: true,
     }),
