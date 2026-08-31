@@ -205,6 +205,7 @@ export function BaziSheet({ onClose, onChartStorageChange }: { onClose: () => vo
   const [storageMessage, setStorageMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const resetDstFold = () => {
     setDstFold(undefined);
@@ -320,18 +321,22 @@ export function BaziSheet({ onClose, onChartStorageChange }: { onClose: () => vo
     }
     const longitudeValue = Number(longitude);
     if (!Number.isFinite(longitudeValue) || longitudeValue < -180 || longitudeValue > 180) {
+      setAdvancedOpen(true);
       setError('请填写 -180 到 180 之间的出生地经度。');
       return;
     }
     if (!timezone.includes('/')) {
+      setAdvancedOpen(true);
       setError('请填写 IANA 时区，例如 Asia/Shanghai。');
       return;
     }
     if (!gender) {
+      setAdvancedOpen(true);
       setError('请选择传统排运性别；该字段只用于计算大运顺逆。');
       return;
     }
     if (dstFoldRequired && dstFold === undefined) {
+      setAdvancedOpen(true);
       setError('请选择这个重复钟表时间是第一次出现还是第二次出现。');
       return;
     }
@@ -411,14 +416,18 @@ export function BaziSheet({ onClose, onChartStorageChange }: { onClose: () => vo
       {locationSearching ? <View style={styles.locationStatus}><ActivityIndicator size="small" color={colors.sage} /><Text style={styles.locationStatusText}>正在识别时区与经纬度…</Text></View> : null}
       {locationResults.length > 0 ? <View style={styles.locationResults}>{locationResults.map(item => <Pressable key={item.provider_id} onPress={() => chooseLocation(item)} style={({ pressed }) => [styles.locationResult, pressed && styles.pressed]}><View style={{ flex: 1 }}><Text style={styles.locationName}>{item.display_name}</Text><Text style={styles.locationMeta}>{item.iana_timezone} · {item.latitude.toFixed(4)}, {item.longitude.toFixed(4)}</Text></View><Text style={styles.locationArrow}>→</Text></Pressable>)}<Text style={styles.attribution}>地点数据：Open-Meteo / GeoNames</Text></View> : null}
       {locationMessage ? <Text style={styles.locationMessage}>{locationMessage}</Text> : null}
-      <View style={styles.twoColumns}><Field label="IANA 时区" value={timezone} onChangeText={changeTimezone} placeholder="Asia/Shanghai" autoCapitalize="none" /><Field label="出生地经度" value={longitude} onChangeText={setLongitude} placeholder="121.4737" autoCapitalize="none" /></View>
-      <Text style={styles.fieldHint}>选择搜索结果后自动填写；也可手动修改。东经为正，西经为负。</Text>
-      {dstFoldRequired || dstFold !== undefined ? <View style={styles.dstFoldCard}><Text style={styles.dstFoldTitle}>这个钟表时间出现了两次</Text><Text style={styles.dstFoldText}>夏令时结束时，同一个当地时间可能对应两个真实时刻。请根据出生记录选择；第一次对应较早的绝对时刻，第二次对应较晚的绝对时刻。</Text><View style={styles.segmentRow}>{dstFoldOptions.map(([value, label]) => <Pressable key={value} onPress={() => { setDstFold(value); setError(''); }} style={[styles.segment, dstFold === value && styles.segmentActive]}><Text style={[styles.segmentText, dstFold === value && styles.segmentTextActive]}>{label}</Text></Pressable>)}</View>{dstFold !== undefined ? <Text style={styles.dstFoldSelected}>已选择{dstFold === 0 ? '第一次' : '第二次'}；可重新排盘或切换选择。</Text> : null}</View> : null}
-      <Segmented label="时间模式" options={solarModes} value={solarMode} onChange={setSolarMode} />
-      <Segmented label="换日规则" options={dayRules} value={dayRule} onChange={setDayRule} />
-      <Segmented label="传统排运性别" options={genderOptions} value={gender} onChange={setGender} />
-      <Text style={styles.ruleHint}>仅用于“阳年男/阴年女顺，阴年男/阳年女逆”的传统排运规则，不用于判断性别身份。</Text>
-      <Segmented label="起运算法" options={luckStartRules} value={luckStartRule} onChange={setLuckStartRule} />
+      <Text style={styles.basicLocationHint}>地点搜索会自动填入时区与经度；需要手动校准时，再展开高级规则。</Text>
+      <View style={styles.advancedToggleCard}><View style={styles.advancedToggleCopy}><Text style={styles.advancedToggleTitle}>高级规则</Text><Text style={styles.advancedToggleText}>{advancedOpen ? '时区、经度、换日和排运选项' : '已按地点与默认规则准备，可按需调整'}</Text></View><Pressable accessibilityRole="button" accessibilityState={{ expanded: advancedOpen }} onPress={() => setAdvancedOpen(open => !open)} style={styles.advancedToggleButton}><Text style={styles.advancedToggleButtonText}>{advancedOpen ? '收起' : '展开'}</Text><Text style={styles.advancedToggleChevron}>{advancedOpen ? '⌃' : '⌄'}</Text></Pressable></View>
+      {advancedOpen ? <View style={styles.advancedPanel}>
+        <View style={styles.twoColumns}><Field label="IANA 时区" value={timezone} onChangeText={changeTimezone} placeholder="Asia/Shanghai" autoCapitalize="none" /><Field label="出生地经度" value={longitude} onChangeText={setLongitude} placeholder="121.4737" autoCapitalize="none" /></View>
+        <Text style={styles.fieldHint}>选择搜索结果后自动填写；也可手动修改。东经为正，西经为负。</Text>
+        {dstFoldRequired || dstFold !== undefined ? <View style={styles.dstFoldCard}><Text style={styles.dstFoldTitle}>这个钟表时间出现了两次</Text><Text style={styles.dstFoldText}>夏令时结束时，同一个当地时间可能对应两个真实时刻。请根据出生记录选择；第一次对应较早的绝对时刻，第二次对应较晚的绝对时刻。</Text><View style={styles.segmentRow}>{dstFoldOptions.map(([value, label]) => <Pressable key={value} onPress={() => { setDstFold(value); setError(''); }} style={[styles.segment, dstFold === value && styles.segmentActive]}><Text style={[styles.segmentText, dstFold === value && styles.segmentTextActive]}>{label}</Text></Pressable>)}</View>{dstFold !== undefined ? <Text style={styles.dstFoldSelected}>已选择{dstFold === 0 ? '第一次' : '第二次'}；可重新排盘或切换选择。</Text> : null}</View> : null}
+        <Segmented label="时间模式" options={solarModes} value={solarMode} onChange={setSolarMode} />
+        <Segmented label="换日规则" options={dayRules} value={dayRule} onChange={setDayRule} />
+        <Segmented label="传统排运性别" options={genderOptions} value={gender} onChange={setGender} />
+        <Text style={styles.ruleHint}>仅用于“阳年男/阴年女顺，阴年男/阳年女逆”的传统排运规则，不用于判断性别身份。</Text>
+        <Segmented label="起运算法" options={luckStartRules} value={luckStartRule} onChange={setLuckStartRule} />
+      </View> : null}
       <View style={styles.inputNoticeCard}><Text style={styles.inputNoticeTitle}>提交前隐私提示</Text><Text style={styles.inputNoticeText}>点击排盘后，出生资料会发送到配置的计算 API。当前 MVP 不主动保存计算请求，也不销售数据或用于行为广告；只有你主动点击“保存”后，命盘才会写入本机。请仅填写本人或已获授权的资料。</Text></View>
       {error ? <View style={styles.errorCard}><Text style={styles.errorText}>{error}</Text></View> : null}
       <Pressable disabled={loading} onPress={submit} style={({ pressed }) => [styles.calculateButton, pressed && styles.pressed, loading && styles.disabled]}>{loading ? <ActivityIndicator color="#FFF" /> : <><Text style={styles.calculateText}>{result ? '重新计算' : '开始排盘'}</Text><Text style={styles.calculateArrow}>→</Text></>}</Pressable>
@@ -451,6 +460,15 @@ const styles = StyleSheet.create({
   fieldLabel: { color: '#737970', fontSize: 10, marginBottom: 7 },
   input: { minHeight: 44, borderWidth: 1, borderColor: 'rgba(43,48,43,0.16)', borderRadius: 11, paddingHorizontal: 12, color: colors.ink, backgroundColor: colors.card, fontSize: 12 },
   fieldHint: { color: '#989B94', fontSize: 9, lineHeight: 15, marginTop: -6, marginBottom: 15 },
+  basicLocationHint: { color: colors.sage, fontSize: 9, lineHeight: 15, marginTop: -5, marginBottom: 14 },
+  advancedToggleCard: { borderWidth: 1, borderColor: 'rgba(88,109,84,0.2)', borderRadius: 13, backgroundColor: colors.sageSoft, padding: 13, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  advancedToggleCopy: { flex: 1 },
+  advancedToggleTitle: { color: colors.ink, fontSize: 12, fontWeight: '700' },
+  advancedToggleText: { color: colors.muted, fontSize: 9, lineHeight: 14, marginTop: 4 },
+  advancedToggleButton: { minHeight: 38, borderRadius: 10, backgroundColor: colors.card, paddingHorizontal: 11, flexDirection: 'row', alignItems: 'center', gap: 5 },
+  advancedToggleButtonText: { color: colors.sage, fontSize: 10, fontWeight: '700' },
+  advancedToggleChevron: { color: colors.sage, fontSize: 14 },
+  advancedPanel: { borderLeftWidth: 2, borderLeftColor: '#D5E1D0', paddingLeft: 10, marginBottom: 4 },
   ruleHint: { color: '#989B94', fontSize: 8, lineHeight: 14, marginTop: -8, marginBottom: 14 },
   inputNoticeCard: { borderWidth: 1, borderColor: '#E7D3C5', borderRadius: 11, backgroundColor: colors.warning, padding: 12, marginTop: -4, marginBottom: 14 },
   inputNoticeTitle: { color: colors.terracotta, fontSize: 10, fontWeight: '700' },

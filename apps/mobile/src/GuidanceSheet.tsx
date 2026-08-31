@@ -21,16 +21,23 @@ import {
 } from './api';
 import { loadStoredBaziChart } from './chartStorage';
 import { DailyStateRecord } from './dailyStateStorage';
+import {
+  GuidanceActionRecord,
+  GuidanceActionStatus,
+  loadGuidanceActions,
+  saveGuidanceAction,
+  updateGuidanceAction,
+} from './guidanceStorage';
 
 const palette = {
   paper: '#F7F5EF',
   card: '#FFFEFA',
   ink: '#252927',
-  muted: '#737970',
+  muted: '#626862',
   line: 'rgba(43,48,43,0.12)',
   sage: '#899B7D',
   sageDeep: '#586D54',
-  terracotta: '#C77A59',
+  terracotta: '#A95738',
   blue: '#70909E',
 };
 
@@ -46,6 +53,7 @@ type GuidanceSheetProps = {
   chartRevision: number;
   onClose: () => void;
   onOpenBazi: () => void;
+  onActionStorageChange?: () => void;
 };
 
 const todayPrompts = [
@@ -72,18 +80,74 @@ function assistantTranscript(result: GuidanceTurnResult): string {
   });
 }
 
-function buildConversation(exchanges: GuidanceExchange[], latestUserText: string): GuidanceConversationMessage[] {
+function buildConversation(
+  exchanges: GuidanceExchange[],
+  latestUserText: string,
+  actions: GuidanceActionRecord[] = [],
+): GuidanceConversationMessage[] {
   const messages: GuidanceConversationMessage[] = [];
   exchanges.forEach(exchange => {
     messages.push({ role: 'user', content: exchange.user });
     messages.push({ role: 'assistant', content: assistantTranscript(exchange.result) });
   });
-  messages.push({ role: 'user', content: latestUserText });
+  const feedback = actions
+    .filter(action => action.outcome || action.newFact)
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .slice(0, 3)
+    .map(action => `执行反馈（${action.status === 'done' ? '已执行' : action.status === 'skipped' ? '暂不做' : '进行中'}）：${action.outcome || '尚未填写结果'}${action.newFact ? `；新事实：${action.newFact}` : ''}`)
+    .join('\n')
+    .slice(0, 1100);
+  messages.push({ role: 'user', content: feedback ? `${feedback}\n\n${latestUserText}`.slice(0, 2400) : latestUserText });
   return messages;
 }
 
-function GuidanceResultCard({ result }: { result: GuidanceTurnResult }) {
+const actionStatusOptions: Array<[GuidanceActionStatus, string]> = [
+  ['planned', '待执行'],
+  ['in_progress', '进行中'],
+  ['done', '已执行'],
+  ['skipped', '暂不做'],
+];
+
+function GuidanceResultCard({
+  result,
+  action,
+  onActionCreated,
+  onActionUpdated,
+}: {
+  result: GuidanceTurnResult;
+  action: GuidanceActionRecord | null;
+  onActionCreated: (result: GuidanceTurnResult) => Promise<GuidanceActionRecord>;
+  onActionUpdated: (id: string, patch: Pick<GuidanceActionRecord, 'status' | 'outcome' | 'newFact'>) => Promise<GuidanceActionRecord>;
+}) {
   const cited = result.evidence_catalog.filter(item => result.evidence_ids.includes(item.id));
+  const [status, setStatus] = useState<GuidanceActionStatus>(action?.status ?? 'planned');
+  const [outcome, setOutcome] = useState(action?.outcome ?? '');
+  const [newFact, setNewFact] = useState(action?.newFact ?? '');
+  const [actionSaving, setActionSaving] = useState(false);
+  const [actionError, setActionError] = useState('');
+
+  useEffect(() => {
+    setStatus(action?.status ?? 'planned');
+    setOutcome(action?.outcome ?? '');
+    setNewFact(action?.newFact ?? '');
+  }, [action?.id, action?.status, action?.outcome, action?.newFact]);
+
+  const persistAction = async () => {
+    setActionSaving(true);
+    setActionError('');
+    try {
+      if (action) {
+        await onActionUpdated(action.id, { status, outcome, newFact });
+      } else {
+        await onActionCreated(result);
+      }
+    } catch (saveError) {
+      setActionError(saveError instanceof Error ? saveError.message : '执行记录没有保存成功，请重试。');
+    } finally {
+      setActionSaving(false);
+    }
+  };
+
   return <View accessibilityLiveRegion="polite" style={styles.answerCard}>
     <View style={styles.answerMetaRow}>
       <View style={styles.answerMetaLead}>
@@ -106,6 +170,21 @@ function GuidanceResultCard({ result }: { result: GuidanceTurnResult }) {
         <View style={styles.nextStepMetaBlock}><Text style={styles.nextStepMetaLabel}>什么时候</Text><Text style={styles.nextStepMetaValue}>{result.next_step.when}</Text></View>
         <View style={styles.nextStepMetaBlock}><Text style={styles.nextStepMetaLabel}>做到什么算完成</Text><Text style={styles.nextStepMetaValue}>{result.next_step.done_when}</Text></View>
       </View>
+    </View>
+
+    <View style={styles.actionTrackerCard}>
+      <View style={styles.actionTrackerHeader}><Text style={styles.actionTrackerTitle}>执行追踪</Text><Text style={styles.actionTrackerMeta}>{action?.completedAt ? `已完成 · ${new Date(action.completedAt).toLocaleDateString('zh-CN')}` : action ? '已记录在本机' : '可选'}</Text></View>
+      <Text style={styles.actionTrackerText}>把这一步当作小实验：完成后记下结果和一个新事实，下一轮建议会更贴近现实。</Text>
+      {!action ? <Pressable accessibilityRole="button" disabled={actionSaving} onPress={persistAction} style={({ pressed }) => [styles.actionTrackerButton, pressed && styles.pressed, actionSaving && styles.actionTrackerDisabled]}><Text style={styles.actionTrackerButtonText}>{actionSaving ? '正在记录…' : '记录这一步'}</Text><Text style={styles.actionTrackerArrow}>→</Text></Pressable> : <>
+        <Text style={styles.actionTrackerFieldLabel}>当前状态</Text>
+        <View accessibilityRole="radiogroup" accessibilityLabel="执行状态" style={styles.actionStatusRow}>{actionStatusOptions.map(([key, label]) => <Pressable key={key} accessibilityRole="radio" accessibilityLabel={label} accessibilityState={{ checked: status === key }} aria-checked={status === key} onPress={() => setStatus(key)} style={[styles.actionStatusChip, status === key && styles.actionStatusChipActive]}><Text style={[styles.actionStatusText, status === key && styles.actionStatusTextActive]}>{label}</Text></Pressable>)}</View>
+        <Text style={styles.actionTrackerFieldLabel}>结果（可选）</Text>
+        <TextInput accessibilityLabel="执行结果" value={outcome} onChangeText={setOutcome} maxLength={600} multiline placeholder="例如：对方确认了预算范围，明天下午再给最终时间。" placeholderTextColor="#9CA198" style={styles.actionTrackerInput} />
+        <Text style={styles.actionTrackerFieldLabel}>新事实（可选）</Text>
+        <TextInput accessibilityLabel="执行后新事实" value={newFact} onChangeText={setNewFact} maxLength={600} multiline placeholder="例如：截止时间比原先预想晚两天。" placeholderTextColor="#9CA198" style={styles.actionTrackerInput} />
+        <Pressable accessibilityRole="button" disabled={actionSaving} onPress={persistAction} style={({ pressed }) => [styles.actionTrackerButton, pressed && styles.pressed, actionSaving && styles.actionTrackerDisabled]}><Text style={styles.actionTrackerButtonText}>{actionSaving ? '正在保存…' : '保存执行结果'}</Text><Text style={styles.actionTrackerArrow}>✓</Text></Pressable>
+        {actionError ? <Text accessibilityLiveRegion="assertive" style={styles.actionTrackerError}>{actionError}</Text> : null}
+      </>}
     </View>
 
     <Text style={styles.sectionTitle}>具体可以这样做</Text>
@@ -137,15 +216,17 @@ function GuidanceResultCard({ result }: { result: GuidanceTurnResult }) {
   </View>;
 }
 
-export function GuidanceSheet({ scope, initialPrompt = '', todayState, chartRevision, onClose, onOpenBazi }: GuidanceSheetProps) {
+export function GuidanceSheet({ scope, initialPrompt = '', todayState, chartRevision, onClose, onOpenBazi, onActionStorageChange }: GuidanceSheetProps) {
   const [input, setInput] = useState(initialPrompt);
   const [chart, setChart] = useState<BaziCalculationInput | null>(null);
   const [chartLoading, setChartLoading] = useState(true);
   const [exchanges, setExchanges] = useState<GuidanceExchange[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [actions, setActions] = useState<Record<string, GuidanceActionRecord>>({});
   const prompts = scope === 'today' ? todayPrompts : yearPrompts;
   const reachedLimit = exchanges.length >= 5;
+  const composerUnavailable = scope === 'year' && (chartLoading || !chart);
 
   useEffect(() => {
     let active = true;
@@ -162,6 +243,42 @@ export function GuidanceSheet({ scope, initialPrompt = '', todayState, chartRevi
       });
     return () => { active = false; };
   }, [chartRevision]);
+
+  useEffect(() => {
+    let active = true;
+    loadGuidanceActions().then(items => {
+      if (!active) return;
+      setActions(Object.fromEntries(items.map(item => [item.generatedAt, item])));
+    }).catch(() => {
+      if (active) setActions({});
+    });
+    return () => { active = false; };
+  }, []);
+
+  const createAction = async (result: GuidanceTurnResult) => {
+    const saved = await saveGuidanceAction({
+      scope,
+      generatedAt: result.generated_at,
+      headline: result.headline,
+      action: result.next_step.action,
+      when: result.next_step.when,
+      doneWhen: result.next_step.done_when,
+      status: 'planned',
+      completedAt: null,
+      outcome: '',
+      newFact: '',
+    });
+    setActions(previous => ({ ...previous, [saved.generatedAt]: saved }));
+    onActionStorageChange?.();
+    return saved;
+  };
+
+  const saveActionUpdate = async (id: string, patch: Pick<GuidanceActionRecord, 'status' | 'outcome' | 'newFact'>) => {
+    const updated = await updateGuidanceAction(id, patch);
+    setActions(previous => ({ ...previous, [updated.generatedAt]: updated }));
+    onActionStorageChange?.();
+    return updated;
+  };
 
   const send = async () => {
     const latest = input.trim();
@@ -185,7 +302,7 @@ export function GuidanceSheet({ scope, initialPrompt = '', todayState, chartRevi
           importantEvent: todayState.importantEvent,
           note: todayState.note,
         } : null,
-        conversation: buildConversation(exchanges, latest),
+        conversation: buildConversation(exchanges, latest, Object.values(actions)),
       });
       setExchanges(previous => [...previous, { user: latest, result }]);
       setInput('');
@@ -203,6 +320,7 @@ export function GuidanceSheet({ scope, initialPrompt = '', todayState, chartRevi
   const disclosureParts = ['你本轮发送的文字'];
   if (todayState) disclosureParts.push('今天主动记录的状态');
   if (chart) disclosureParts.push('最少量已审计命盘与周期事实');
+  if (Object.values(actions).some(action => action.outcome || action.newFact)) disclosureParts.push('本机已保存的执行反馈');
 
   return <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.shell}>
     <View style={styles.header}>
@@ -233,7 +351,7 @@ export function GuidanceSheet({ scope, initialPrompt = '', todayState, chartRevi
         <View style={styles.promiseRow}><Text style={styles.promiseDot}>3</Text><Text style={styles.promiseText}>你补充后，整份建议会重新整理</Text></View>
       </View> : null}
 
-      {!exchanges.length ? <View style={styles.promptSection}>
+      {!exchanges.length && !composerUnavailable ? <View style={styles.promptSection}>
         <Text style={styles.promptTitle}>你可以从这里开始</Text>
         <View style={styles.promptWrap}>{prompts.map(prompt => <Pressable key={prompt} accessibilityRole="button" onPress={() => setInput(prompt)} style={({ pressed }) => [styles.promptChip, pressed && styles.pressed]}><Text style={styles.promptChipText}>{prompt}</Text></Pressable>)}</View>
       </View> : null}
@@ -246,7 +364,7 @@ export function GuidanceSheet({ scope, initialPrompt = '', todayState, chartRevi
 
       {exchanges.map((exchange, index) => <View key={`${exchange.result.generated_at}-${index}`} style={styles.exchange}>
         <View style={styles.userBubble}><Text style={styles.userBubbleLabel}>你</Text><Text style={styles.userBubbleText}>{exchange.user}</Text></View>
-        <GuidanceResultCard result={exchange.result} />
+        <GuidanceResultCard result={exchange.result} action={actions[exchange.result.generated_at] ?? null} onActionCreated={createAction} onActionUpdated={saveActionUpdate} />
       </View>)}
 
       {loading ? <View accessibilityLiveRegion="polite" style={styles.loadingCard}>
@@ -257,7 +375,7 @@ export function GuidanceSheet({ scope, initialPrompt = '', todayState, chartRevi
       {reachedLimit ? <View style={styles.limitCard}><Text style={styles.limitTitle}>这次先收住。</Text><Text style={styles.limitText}>已经沟通 5 轮。先执行一个小步骤，得到新事实后再开启一轮，比继续堆信息更可靠。</Text></View> : null}
     </ScrollView>
 
-    <View style={styles.composerArea}>
+    {!composerUnavailable ? <View style={styles.composerArea}>
       <Text style={styles.disclosure}>点击发送即同意把{disclosureParts.join('、')}交给 DeepSeek 生成回复；知时 API 不保存本次对话。不要填写姓名、联系方式、密码或完整金融账户信息。</Text>
       <View style={styles.composer}>
         <TextInput
@@ -292,7 +410,7 @@ export function GuidanceSheet({ scope, initialPrompt = '', todayState, chartRevi
         </Pressable>
       </View>
       <Text style={styles.voiceHint}>可直接打字，或使用 iPhone 键盘听写；知时本身不录音。</Text>
-    </View>
+    </View> : null}
   </KeyboardAvoidingView>;
 }
 
@@ -340,6 +458,23 @@ const styles = StyleSheet.create({
   nextStepMetaBlock: { borderTopWidth: 1, borderTopColor: 'rgba(88,109,84,0.16)', paddingTop: 10 },
   nextStepMetaLabel: { color: palette.sageDeep, fontSize: 12, fontWeight: '700' },
   nextStepMetaValue: { color: '#4D584A', fontSize: 15, lineHeight: 22, marginTop: 4 },
+  actionTrackerCard: { borderWidth: 1, borderColor: 'rgba(88,109,84,0.18)', borderRadius: 17, backgroundColor: '#F4F5EE', padding: 15, marginTop: 12 },
+  actionTrackerHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  actionTrackerTitle: { color: palette.ink, fontSize: 16, fontWeight: '700' },
+  actionTrackerMeta: { color: palette.sageDeep, fontSize: 12, fontWeight: '600' },
+  actionTrackerText: { color: palette.muted, fontSize: 14, lineHeight: 21, marginTop: 6 },
+  actionTrackerButton: { minHeight: 44, borderRadius: 12, backgroundColor: palette.ink, paddingHorizontal: 13, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 },
+  actionTrackerButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  actionTrackerArrow: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  actionTrackerDisabled: { opacity: 0.62 },
+  actionTrackerFieldLabel: { color: palette.sageDeep, fontSize: 12, fontWeight: '700', marginTop: 13, marginBottom: 7 },
+  actionStatusRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  actionStatusChip: { minHeight: 36, borderWidth: 1, borderColor: 'rgba(88,109,84,0.22)', borderRadius: 18, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: palette.card },
+  actionStatusChipActive: { borderColor: palette.sageDeep, backgroundColor: '#E4EEE0' },
+  actionStatusText: { color: palette.muted, fontSize: 13, fontWeight: '600' },
+  actionStatusTextActive: { color: palette.sageDeep },
+  actionTrackerInput: { minHeight: 46, maxHeight: 96, borderWidth: 1, borderColor: 'rgba(43,48,43,0.15)', borderRadius: 11, backgroundColor: palette.card, color: palette.ink, fontSize: 14, lineHeight: 20, paddingHorizontal: 11, paddingVertical: 9, textAlignVertical: 'top' },
+  actionTrackerError: { color: '#914B38', fontSize: 13, lineHeight: 19, marginTop: 8 },
   sectionTitle: { color: palette.ink, fontSize: 19, fontWeight: '700', marginTop: 24, marginBottom: 2 },
   exampleCard: { borderTopWidth: 1, borderTopColor: palette.line, paddingTop: 16, marginTop: 14 },
   exampleHeader: { flexDirection: 'row', alignItems: 'center', gap: 9 },

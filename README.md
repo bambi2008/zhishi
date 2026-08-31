@@ -1,6 +1,6 @@
 # 知时 · 东方人生导航 MVP
 
-这是 Project ZHISHI 的第一轮可运行产品骨架，包含响应式 Web 原型、FastAPI API 骨架，以及面向 iOS / Android 的 Expo + React Native 移动端。
+这是 Project ZHISHI 的第一轮可运行产品骨架。`apps/mobile` 中的 Expo + React Native 应用是当前唯一主产品，同时覆盖 iOS、Android 和 Web 预览；根目录静态 Web 仅保留为旧版视觉原型。
 
 ## 当前覆盖
 
@@ -25,7 +25,15 @@
 npm run dev
 ```
 
-然后打开 `http://127.0.0.1:4173/`。
+Expo 会输出当前 Web 预览地址，默认通常是 `http://localhost:8081/`。
+
+如需查看旧版静态 Web 原型：
+
+```bash
+npm run dev:legacy
+```
+
+旧版地址为 `http://127.0.0.1:4173/`，不再代表当前产品信息架构。
 
 API：
 
