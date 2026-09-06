@@ -1,0 +1,14 @@
+node_modules/
+apps/mobile/.expo/
+dist/
+build/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.playwright-mcp/
+*.log
+.env
+.venv/
+venv/
+*.egg-info/
+services/api/uv.lock

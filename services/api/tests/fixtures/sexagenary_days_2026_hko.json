@@ -1,0 +1,39 @@
+{
+  "schema_version": 1,
+  "dataset": "2026 sexagenary-day anchors and hour-pillar table",
+  "official_sources": {
+    "publisher": "Hong Kong Observatory",
+    "monthly_almanac_url_template": "https://www.hko.gov.hk/tc/gts/astron2026/files/2026calMM.pdf",
+    "stems_and_branches_url": "https://www.hko.gov.hk/sc/gts/time/stemsandbranches.htm",
+    "retrieved_on": "2026-08-07",
+    "notes": [
+      "Each monthly PDF prints the sexagenary day beside every Gregorian date.",
+      "The HKO reference page publishes the 60-pillar cycle, the 23:00-01:00 Zi-hour interval, and the day-stem-to-hour-stem table."
+    ]
+  },
+  "monthly_day_anchors": [
+    {"date": "2026-01-01", "pillar": "乙亥", "source_month": "2026cal01.pdf"},
+    {"date": "2026-02-01", "pillar": "丙午", "source_month": "2026cal02.pdf"},
+    {"date": "2026-03-01", "pillar": "甲戌", "source_month": "2026cal03.pdf"},
+    {"date": "2026-04-01", "pillar": "乙巳", "source_month": "2026cal04.pdf"},
+    {"date": "2026-05-01", "pillar": "乙亥", "source_month": "2026cal05.pdf"},
+    {"date": "2026-06-01", "pillar": "丙午", "source_month": "2026cal06.pdf"},
+    {"date": "2026-07-01", "pillar": "丙子", "source_month": "2026cal07.pdf"},
+    {"date": "2026-08-01", "pillar": "丁未", "source_month": "2026cal08.pdf"},
+    {"date": "2026-09-01", "pillar": "戊寅", "source_month": "2026cal09.pdf"},
+    {"date": "2026-10-01", "pillar": "戊申", "source_month": "2026cal10.pdf"},
+    {"date": "2026-11-01", "pillar": "己卯", "source_month": "2026cal11.pdf"},
+    {"date": "2026-12-01", "pillar": "己酉", "source_month": "2026cal12.pdf"}
+  ],
+  "hour_rules": {
+    "branches": ["子", "丑", "寅", "卯", "辰", "巳", "午", "未", "申", "酉", "戌", "亥"],
+    "representative_hours": [0, 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21],
+    "stem_rows": [
+      {"day_stems": ["甲", "己"], "hour_stems": ["甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸", "甲", "乙"]},
+      {"day_stems": ["乙", "庚"], "hour_stems": ["丙", "丁", "戊", "己", "庚", "辛", "壬", "癸", "甲", "乙", "丙", "丁"]},
+      {"day_stems": ["丙", "辛"], "hour_stems": ["戊", "己", "庚", "辛", "壬", "癸", "甲", "乙", "丙", "丁", "戊", "己"]},
+      {"day_stems": ["丁", "壬"], "hour_stems": ["庚", "辛", "壬", "癸", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛"]},
+      {"day_stems": ["戊", "癸"], "hour_stems": ["壬", "癸", "甲", "乙", "丙", "丁", "戊", "己", "庚", "辛", "壬", "癸"]}
+    ]
+  }
+}

@@ -1,0 +1,52 @@
+{
+  "schema_version": 1,
+  "dataset": "2026 equation-of-time reference values and true-solar-time conventions",
+  "official_sources": [
+    {
+      "publisher": "NOAA Global Monitoring Laboratory",
+      "title": "NOAA Solar Calculator",
+      "url": "https://gml.noaa.gov/grad/solcalc/",
+      "retrieved_on": "2026-08-07",
+      "display_precision_minutes": 0.01,
+      "notice": "The page says the calculator is no longer actively maintained. Values are retained as an independent regression reference, not fetched at runtime."
+    },
+    {
+      "publisher": "NOAA Global Monitoring Laboratory",
+      "title": "General Solar Position Calculations",
+      "url": "https://gml.noaa.gov/grad/solcalc/solareqns.PDF",
+      "conventions": {
+        "longitude": "degrees east are positive",
+        "timezone": "hours added to UTC to obtain local civil time",
+        "mean_solar_offset_minutes": "4 * longitude - 60 * timezone",
+        "apparent_solar_offset_minutes": "mean solar offset + equation of time"
+      }
+    },
+    {
+      "publisher": "Hong Kong Observatory",
+      "title": "Basic Solar Time Concepts",
+      "url": "https://www.hko.gov.hk/en/gts/time/item_list.htm",
+      "note": "Documents the distinction between apparent solar time and mean solar time."
+    }
+  ],
+  "capture_settings": {
+    "year": 2026,
+    "timezone": "GMT",
+    "local_time": "12:00:00",
+    "instant_basis": "UTC",
+    "note": "Equation of time is independent of observer longitude; GMT makes each entered local time the recorded UTC instant."
+  },
+  "calculator_cases": [
+    {"instant_utc": "2026-01-01T12:00:00+00:00", "equation_of_time_minutes": -3.57},
+    {"instant_utc": "2026-02-11T12:00:00+00:00", "equation_of_time_minutes": -14.23},
+    {"instant_utc": "2026-03-15T12:00:00+00:00", "equation_of_time_minutes": -8.88},
+    {"instant_utc": "2026-04-15T12:00:00+00:00", "equation_of_time_minutes": -0.02},
+    {"instant_utc": "2026-05-15T12:00:00+00:00", "equation_of_time_minutes": 3.63},
+    {"instant_utc": "2026-06-14T12:00:00+00:00", "equation_of_time_minutes": -0.31},
+    {"instant_utc": "2026-07-15T12:00:00+00:00", "equation_of_time_minutes": -6.02},
+    {"instant_utc": "2026-08-15T12:00:00+00:00", "equation_of_time_minutes": -4.50},
+    {"instant_utc": "2026-09-15T12:00:00+00:00", "equation_of_time_minutes": 4.77},
+    {"instant_utc": "2026-10-15T12:00:00+00:00", "equation_of_time_minutes": 14.25},
+    {"instant_utc": "2026-11-03T12:00:00+00:00", "equation_of_time_minutes": 16.49},
+    {"instant_utc": "2026-12-15T12:00:00+00:00", "equation_of_time_minutes": 4.86}
+  ]
+}

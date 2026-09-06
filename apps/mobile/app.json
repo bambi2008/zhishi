@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "知时",
+    "slug": "zhishi",
+    "version": "0.1.0",
+    "icon": "./assets/icon.png",
+    "orientation": "portrait",
+    "scheme": "zhishi",
+    "userInterfaceStyle": "light",
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/adaptive-icon.png",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F5EF"
+        }
+      ]
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.bambi2008.zhishi",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "com.bambi2008.zhishi",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F7F5EF"
+      }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "6c5c035b-3eae-4141-a0b4-9a5f635aec49"
+      }
+    },
+    "owner": "zhishi-app"
+  }
+}

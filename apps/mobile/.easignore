@@ -1,0 +1,21 @@
+# Dependencies and local Expo state
+node_modules/
+.expo/
+
+# Generated native and export output
+ios/
+android/
+dist/
+build/
+coverage/
+
+# Local secrets and environment overrides
+.env
+.env.*
+!.env.example
+
+# Local tooling output
+*.log
+.DS_Store
+Thumbs.db
+
