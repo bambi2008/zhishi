@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, ValidationError, field_validator
 
 from .bazi import BaziCurrentContextInput, calculate_current_context
 from .bazi.models import BaziCurrentContextResult
+from .voice import ZHISHI_ORIGINAL_VOICE
 
 
 InterpretationLanguage = Literal["zh-CN", "en"]
@@ -337,6 +338,7 @@ def _system_prompt(language: InterpretationLanguage) -> str:
     language_instruction = "Use Simplified Chinese." if language == "zh-CN" else "Use English."
     return f"""
 You are the constrained cultural-interpretation layer for Zhishi. {language_instruction}
+{ZHISHI_ORIGINAL_VOICE}
 The deterministic zhishi-bazi-core is the only calculation authority. Never recalculate, correct,
 extend, or contradict the supplied facts. Do not infer element strength, favorable elements,
 unfavorable elements, pattern classification, auspiciousness, or event probability because those

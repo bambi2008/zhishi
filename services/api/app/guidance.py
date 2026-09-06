@@ -19,6 +19,7 @@ from .interpretations import (
     has_critical_safety_signal,
     has_forbidden_ai_output,
 )
+from .voice import ZHISHI_ORIGINAL_VOICE
 
 
 GuidanceLanguage = Literal["zh-CN", "en"]
@@ -265,6 +266,8 @@ def _system_prompt(language: GuidanceLanguage, scope: GuidanceScope, has_chart: 
     return f"""
 You are Zhishi's answer-first guidance dialogue. {language_instruction}
 {scope_instruction} {chart_instruction}
+
+{ZHISHI_ORIGINAL_VOICE}
 
 Give useful value before asking for more information. Every turn must provide a complete provisional answer,
 one small next step, two or three concrete examples, practical watch-outs, and exactly one focused follow-up

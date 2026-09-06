@@ -143,6 +143,8 @@ def test_reality_only_turn_answers_before_asking_one_question() -> None:
     assert "dialogue.user_1" in result.evidence_ids
     assert result.usage.total_tokens == 330
     assert "No bazi chart is supplied" in provider.system_prompts[0]
+    assert "original Zhishi persona" in provider.system_prompts[0]
+    assert "Do not imitate, quote, name" in provider.system_prompts[0]
 
 
 def test_chart_grounded_turn_requires_calculation_and_latest_user_evidence() -> None:
